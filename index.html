@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Control de asistencia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --asfalto:#1d2b36;
+  --linea:#f2b705;
+  --fondo:#edf1f3;
+  --papel:#ffffff;
+  --tinta:#16222c;
+  --suave:#586976;
+  --borde:#d3dbe1;
+  --ok:#0a7a5a;
+  --ok-fondo:#dff3ec;
+  --alerta:#b3392f;
+  --alerta-fondo:#fbe9e7;
+  --foco:#1c6fd6;
+  --titulo:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --texto:'Barlow',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fondo);color:var(--tinta);font:400 18px/1.4 var(--texto);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--foco);outline-offset:2px}
+
+/* Banda superior */
+.banda{background:var(--asfalto);color:#fff;padding-top:env(safe-area-inset-top,0)}
+.banda__in{max-width:760px;margin:0 auto;padding:22px 20px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.banda h1{font:700 clamp(34px,8vw,52px)/1 var(--titulo);margin:0;letter-spacing:.01em}
+.banda p{margin:6px 0 0;color:#c9d4dc;font-size:18px}
+.banda .meta{font-size:16px;color:#9fb0bc;margin-top:2px}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav button{background:none;border:1px solid #476071;color:#dbe5ec;border-radius:8px;padding:9px 14px;font-size:15px;cursor:pointer;white-space:nowrap;min-height:42px}
+.nav button:hover{background:#2a3b48}
+.nav button[aria-current="page"]{background:#fff;color:var(--asfalto);border-color:#fff;font-weight:600}
+.carril{height:6px;background:repeating-linear-gradient(90deg,var(--linea) 0 30px,transparent 30px 48px)}
+
+.demo{background:#fff4cc;border-bottom:1px solid #e8cf7a;color:#4a3b00;font-size:16px}
+.demo div{max-width:760px;margin:0 auto;padding:10px 20px}
+
+main{max-width:760px;margin:0 auto;padding:26px 20px calc(96px + env(safe-area-inset-bottom,0))}
+h2{font:700 clamp(28px,6vw,36px)/1.1 var(--titulo);margin:0 0 14px}
+.suave{color:var(--suave)}
+label.campo{display:block;font-weight:600;margin-bottom:8px}
+
+/* Botones */
+.principal,.sec{min-height:56px;border-radius:10px;padding:0 22px;font-weight:600;font-size:19px;cursor:pointer;border:2px solid transparent}
+.principal{background:var(--ok);color:#fff}
+.principal:hover{background:#08684d}
+.principal:disabled{background:#9db8af;cursor:not-allowed}
+.principal.chico{min-height:48px;font-size:17px;padding:0 16px;white-space:nowrap}
+.sec{background:var(--papel);border-color:#9fb0bc;color:var(--tinta);min-height:46px;font-size:16px;padding:0 16px}
+.sec:hover{background:#f3f7fa}
+.block{width:100%}
+.mini{border:1px solid #9fb0bc;background:var(--papel);border-radius:8px;padding:0 12px;min-height:40px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
+.mini:hover{background:#f3f7fa}
+.mini.peligro{border-color:var(--alerta);color:var(--alerta)}
+.mini.peligro.seguro{background:var(--alerta);color:#fff}
+.mini.ok{border-color:var(--ok);color:var(--ok)}
+.error{background:var(--alerta-fondo);color:#7d251d;border-radius:10px;padding:12px 14px;margin:14px 0 0}
+
+/* PIN */
+.pin{max-width:380px}
+.pin input{width:100%;height:60px;border:2px solid #9fb0bc;border-radius:10px;padding:0 16px;font-size:22px;letter-spacing:.12em;margin-bottom:12px;background:var(--papel)}
+.pin p{color:var(--suave);font-size:16px;margin:0 0 16px}
+
+/* Búsqueda */
+.buscador input{width:100%;height:60px;border:2px solid #9fb0bc;border-radius:10px;padding:0 16px;font-size:20px;background:var(--papel)}
+.buscador input:focus{border-color:var(--foco);outline:none;box-shadow:0 0 0 3px #cfe1fa}
+.ayuda{margin:10px 2px 0;color:var(--suave);font-size:16px;min-height:1.4em}
+.resultados{margin-top:14px;background:var(--papel);border:1px solid var(--borde);border-radius:10px;overflow:hidden}
+.resultados:empty{display:none}
+.persona{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-bottom:1px solid var(--borde)}
+.persona:last-child{border-bottom:0}
+.persona__txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.persona__txt strong{font-size:20px;font-weight:600;line-height:1.2}
+.persona__txt span{color:var(--suave);font-size:16px;overflow-wrap:anywhere}
+.persona__der{flex:none;display:flex;align-items:center;gap:10px}
+.etiqueta{font-size:15px;font-weight:600;color:var(--ok);background:var(--ok-fondo);border-radius:999px;padding:4px 12px;white-space:nowrap}
+.vacio{padding:20px 18px;color:var(--suave)}
+.vacio b{color:var(--tinta)}
+
+/* Lista de asistencia */
+.panel__top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.panel__top h2{margin:0}
+.acciones{display:flex;gap:8px;flex-wrap:wrap}
+.resumen{margin:14px 0 18px}
+.numero{margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.numero strong{font:700 clamp(56px,14vw,84px)/1 var(--titulo)}
+.numero span{font-size:20px;color:var(--suave)}
+.via{height:16px;background:var(--asfalto);border-radius:8px;overflow:hidden;margin:8px 0 6px}
+.via i{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--linea) 0 18px,transparent 18px 30px);transition:width .4s ease}
+.filtros{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
+.filtros button{border:1px solid #9fb0bc;background:var(--papel);border-radius:999px;padding:8px 16px;font-size:16px;font-weight:500;cursor:pointer;min-height:42px}
+.filtros button[aria-pressed="true"]{background:var(--asfalto);border-color:var(--asfalto);color:#fff}
+.q-panel{width:100%;height:50px;border:2px solid #9fb0bc;border-radius:10px;padding:0 14px;font-size:18px;background:var(--papel);margin-bottom:12px}
+.lista{background:var(--papel);border:1px solid var(--borde);border-radius:10px;overflow:hidden}
+.item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--borde)}
+.item:last-child{border-bottom:0}
+.item__txt{min-width:0}
+.item__txt strong{display:block;font-weight:600;line-height:1.25}
+.item__txt span{display:block;color:var(--suave);font-size:15px;overflow-wrap:anywhere}
+.item__der{flex:none;display:flex;align-items:center;gap:10px}
+.hora{font-weight:600;color:var(--ok);font-variant-numeric:tabular-nums}
+details.agregar{margin-top:20px;background:var(--papel);border:1px solid var(--borde);border-radius:10px;padding:0 16px}
+details.agregar summary{cursor:pointer;font-weight:600;padding:14px 0}
+details.agregar form{padding:0 0 16px;display:grid;gap:10px}
+details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-radius:8px;padding:0 12px;font-size:17px;width:100%}
+.chk{display:flex;gap:10px;align-items:center;font-size:16px}
+.chk input{width:22px;height:22px}
+
+/* Aviso al marcar */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0));transform:translateX(-50%);width:min(560px,calc(100% - 28px));background:var(--asfalto);color:#fff;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 24px rgba(0,0,0,.28);z-index:20;border-left:6px solid var(--ok)}
+.toast.error{border-left-color:#e5635a}
+.toast span{overflow-wrap:anywhere}
+.toast button{flex:none;background:none;border:1px solid #6b8294;color:#fff;border-radius:8px;min-height:40px;padding:0 14px;font-weight:600;cursor:pointer}
+.toast button:hover{background:#2a3b48}
+
+.ayuda.buscando::before{content:'';display:inline-block;width:16px;height:16px;border:3px solid #cbd6dd;border-top-color:var(--foco);border-radius:50%;margin-right:8px;vertical-align:-3px;animation:giro .9s linear infinite}
+@keyframes giro{to{transform:rotate(360deg)}}
+
+/* Pantalla de espera: bloquea la web mientras se guarda o se consulta */
+.carga{position:fixed;inset:0;background:rgba(22,34,44,.62);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.carga__caja{background:var(--papel);border-radius:14px;padding:30px 26px;max-width:400px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3);border-top:6px solid var(--linea)}
+.carga__giro{width:60px;height:60px;border-radius:50%;border:7px solid #d7e0e6;border-top-color:var(--ok);margin:0 auto 18px;animation:giro .9s linear infinite}
+.carga__t{font:700 32px/1.1 var(--titulo);margin:0 0 8px}
+.carga__s{margin:0;color:var(--suave);font-size:18px}
+
+@media (max-width:520px){
+  .persona{flex-direction:column;align-items:stretch}
+  .persona__der{justify-content:space-between}
+  .persona__der .principal{width:100%}
+  .item{align-items:flex-start;flex-direction:column}
+  .item__der{width:100%;justify-content:space-between}
+}
+@media (prefers-reduced-motion:reduce){
+  .via i{transition:none}
+  .carga__giro,.ayuda.buscando::before{animation-duration:3s}
+}
+</style>
+</head>
+<body>
+
+<header class="banda">
+  <div class="banda__in">
+    <div>
+      <h1 id="evento">Evento</h1>
+      <p id="subtitulo"></p>
+      <p class="meta" id="meta" hidden></p>
+    </div>
+    <nav class="nav" id="nav" hidden aria-label="Secciones">
+      <button type="button" id="navBuscar">Registrar</button>
+      <button type="button" id="navLista">Lista de asistencia</button>
+      <button type="button" id="navSalir">Salir</button>
+    </nav>
+  </div>
+  <div class="carril" aria-hidden="true"></div>
+</header>
+
+<div class="demo" id="demoBanner" hidden>
+  <div><b>Modo demostración.</b> Los nombres son inventados y no se guarda nada en ningún Sheet. PIN: 1234. Prueba buscando «peña» o «mendoza».</div>
+</div>
+
+<main>
+
+  <!-- Entrada con PIN -->
+  <section id="vPin" class="pin" aria-labelledby="tPin">
+    <h2 id="tPin">Entrar al registro</h2>
+    <p>Solo para el equipo de recepción.</p>
+    <form id="pinForm">
+      <label class="campo" for="pin">PIN del equipo</label>
+      <input id="pin" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
+      <button class="principal block" type="submit" id="pinBtn">Entrar</button>
+    </form>
+    <p class="error" id="pinError" role="alert" hidden></p>
+  </section>
+
+  <!-- Registrar -->
+  <section id="vBuscar" hidden aria-labelledby="tBuscar">
+    <h2 id="tBuscar">Busca a la persona</h2>
+    <div class="buscador">
+      <label class="campo" for="q">Nombre o apellidos</label>
+      <input id="q" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="search" placeholder="Por ejemplo: Rojas Fernández">
+    </div>
+    <p class="ayuda" id="ayuda"></p>
+    <div class="resultados" id="resultados" aria-live="polite"></div>
+  </section>
+
+  <!-- Lista de asistencia -->
+  <section id="vLista" hidden>
+    <div class="panel__top">
+      <h2>Asistencia en vivo</h2>
+      <div class="acciones">
+        <button class="sec" id="btnActualizar" type="button">Actualizar</button>
+        <button class="sec" id="btnCSV" type="button">Descargar CSV</button>
+      </div>
+    </div>
+    <div class="resumen">
+      <p class="numero"><strong id="nPres">0</strong><span>presentes de <b id="nTot">0</b></span></p>
+      <div class="via" role="progressbar" aria-label="Avance de asistencia" aria-valuemin="0" aria-valuemax="100" id="progreso"><i></i></div>
+      <p class="suave" id="nFaltan"></p>
+    </div>
+    <div class="filtros" role="group" aria-label="Filtrar la lista">
+      <button type="button" data-f="todos" aria-pressed="true">Todos</button>
+      <button type="button" data-f="presentes" aria-pressed="false">Presentes</button>
+      <button type="button" data-f="faltan" aria-pressed="false">Faltan</button>
+    </div>
+    <input class="q-panel" id="qPanel" type="search" placeholder="Buscar en la lista" autocomplete="off">
+    <div class="lista" id="listaPanel"></div>
+
+    <details class="agregar">
+      <summary>Agregar a alguien que no está en la lista</summary>
+      <form id="formAgregar">
+        <input type="text" id="aNombre" placeholder="Nombres y apellidos" required minlength="3" maxlength="120">
+        <input type="text" id="aEntidad" placeholder="Entidad" maxlength="160">
+        <input type="text" id="aCargo" placeholder="Cargo" maxlength="160">
+        <label class="chk"><input type="checkbox" id="aPresente" checked> Marcar asistencia ahora</label>
+        <button class="principal" type="submit">Agregar</button>
+      </form>
+    </details>
+    <p><button class="sec" id="btnReiniciarDemo" type="button" hidden>Reiniciar datos de ejemplo</button></p>
+  </section>
+
+</main>
+
+<div class="carga" id="carga" hidden role="alertdialog" aria-modal="true" aria-labelledby="cargaT" aria-describedby="cargaS">
+  <div class="carga__caja">
+    <div class="carga__giro" aria-hidden="true"></div>
+    <p class="carga__t" id="cargaT">Cargando datos…</p>
+    <p class="carga__s" id="cargaS">Espera un momento y no toques la pantalla.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span id="toastTxt"></span>
+  <button type="button" id="toastBtn" hidden>Deshacer</button>
+</div>
+
+<script>
+/* ===================== CONFIGURACIÓN ===================== */
+const CONFIG = {
+  EVENTO: 'III FONAMUS 2026',
+  SUBTITULO: 'Control de asistencia',
+  FECHA_LUGAR: '',              // Opcional. Ejemplo: '12 de noviembre, Lima'
+  API_URL: 'https://script.google.com/macros/s/AKfycby045t1qMK-xxdF2nN-25g7UGFlsWGKscm8SqSmC1oIpX5uAf8HmTtSPRW3lvd2q2NZ/exec',                  // Pega aquí la URL de la aplicación web de Apps Script. Vacío = modo demostración.
+  REFRESCO_LISTA_SEG: 20        // Cada cuántos segundos se actualiza la lista de asistencia.
+};
+
+/* ===================== UTILIDADES ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const fmtHora = s => { s = String(s || ''); return s.length >= 16 ? s.slice(11, 16) : s; };
+const pad = n => String(n).padStart(2, '0');
+const ahora = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const MSG_RED = 'No hay conexión con el registro. Revisa el internet e inténtalo de nuevo.';
+const MSG_SERVIDOR = 'El registro no respondió bien. Inténtalo otra vez.';
+const AYUDA = 'Escribe al menos 3 letras. No importan las mayúsculas ni las tildes.';
+const mensajeError = r => r.error === 'red' ? MSG_RED : r.error === 'no_existe' ? 'Esa persona ya no está en la lista. Actualiza y busca de nuevo.' : MSG_SERVIDOR;
+
+/* ===================== DATOS DE EJEMPLO (solo modo demo) ===================== */
+const DEMO = [
+  ['P001','Lucía Fernández Rojas','Municipalidad Provincial de Ejemplo','Alcaldesa',''],
+  ['P002','Carlos Mendoza Quispe','Universidad Nacional de Ejemplo','Docente investigador','2026-11-12 08:41:10'],
+  ['P003','Ana María Peña Salazar','Ministerio de Ejemplo','Directora general',''],
+  ['P004','Jorge Peña Huamán','Gobierno Regional de Ejemplo','Gerente de Infraestructura',''],
+  ['P005','Rosa Ñahui Condori','Municipalidad Distrital de Muestra','Regidora',''],
+  ['P006','Miguel Ángel Torres Vega','Colegio de Ingenieros (sede de ejemplo)','Decano',''],
+  ['P007','Daniela Quiroz Paredes','Embajada de Ejemplo','Segunda secretaria','2026-11-12 08:55:32'],
+  ['P008','Héctor Mendoza Lara','Cooperación de Ejemplo','Especialista en transporte',''],
+  ['P009','Sofía Castillo Rivera','Autoridad de Transporte de Ejemplo','Presidenta ejecutiva',''],
+  ['P010','Luis Alberto Vargas Cruz','Universidad Privada de Muestra','Vicerrector de Investigación',''],
+  ['P011','Patricia Núñez Alarcón','Organización civil de Ejemplo','Coordinadora',''],
+  ['P012','Raúl Gutiérrez Mamani','Municipalidad Provincial de Muestra','Gerente de Movilidad','']
+];
+let demoDB = null;
+let DEMO_LATENCIA = 250;
+function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora]) => ({id,nombre,entidad,cargo,presente:!!hora,hora})); }
+async function demoApi(action, d, pin){
+  if (!demoDB) demoInit();
+  await sleep(DEMO_LATENCIA);
+  if (pin !== '1234') return {ok:false, error:'pin'};
+  switch (action){
+    case 'buscar': {
+      if (norm(d.q).length < 3) return {ok:true, resultados:[]};
+      const toks = norm(d.q).split(' ').filter(Boolean);
+      return {ok:true, resultados: demoDB.filter(p => toks.every(t => norm(p.nombre).includes(t))).slice(0,8).map(p => ({...p}))};
+    }
+    case 'marcar': {
+      const p = demoDB.find(x => x.id === d.id); if (!p) return {ok:false, error:'no_existe'};
+      const pres = !!d.presente;
+      if (pres && p.presente) return {ok:true, yaRegistrado:true, nombre:p.nombre, hora:p.hora};
+      p.presente = pres; p.hora = pres ? ahora() : '';
+      return {ok:true, yaRegistrado:false, nombre:p.nombre, hora:p.hora};
+    }
+    case 'panel':
+      return {ok:true, total:demoDB.length, presentes:demoDB.filter(p => p.presente).length, lista:demoDB.map(p => ({...p}))};
+    case 'agregar': {
+      const n = demoDB.filter(p => p.id.startsWith('E')).length + 1;
+      demoDB.push({id:'E'+String(n).padStart(3,'0'), nombre:d.nombre, entidad:d.entidad||'', cargo:d.cargo||'', presente:!!d.presente, hora:d.presente ? ahora() : ''});
+      return {ok:true};
+    }
+  }
+  return {ok:false, error:'accion'};
+}
+
+/* ===================== LLAMADAS AL SERVIDOR ===================== */
+let PIN = null;
+try { PIN = sessionStorage.getItem('fonamus_pin'); } catch (e) {}
+
+async function api(action, datos = {}, pin = PIN){
+  if (!CONFIG.API_URL) return demoApi(action, datos, pin);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const r = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},   // evita la verificación previa (CORS) de Apps Script
+      body: JSON.stringify({action, pin, ...datos}),
+      signal: ctrl.signal
+    });
+    return await r.json();
+  } catch (e) {
+    return {ok:false, error:'red'};
+  } finally { clearTimeout(t); }
+}
+// Si el PIN ya no sirve (cambió o se bloqueó), vuelve a la pantalla de entrada.
+function pinInvalido(r){
+  if (r.ok || (r.error !== 'pin' && r.error !== 'bloqueado')) return false;
+  salir(r.error === 'bloqueado' ? 'Demasiados intentos. Espera 5 minutos y vuelve a probar.' : 'El PIN ya no es válido. Ingresa de nuevo.');
+  return true;
+}
+
+/* ===================== VISTAS ===================== */
+const VISTAS = ['vPin','vBuscar','vLista'];
+function mostrar(id){
+  VISTAS.forEach(v => { $('#'+v).hidden = (v !== id); });
+  $('#nav').hidden = !PIN;
+  [['#navBuscar','vBuscar'],['#navLista','vLista']].forEach(([s, v]) => {
+    if (id === v) $(s).setAttribute('aria-current', 'page'); else $(s).removeAttribute('aria-current');
+  });
+  if (id === 'vLista') iniciarRefresco(); else detenerRefresco();
+  window.scrollTo(0, 0);
+}
+$('#navBuscar').addEventListener('click', () => { mostrar('vBuscar'); $('#q').focus(); });
+$('#navLista').addEventListener('click', () => { mostrar('vLista'); recargar(); });
+$('#navSalir').addEventListener('click', () => salir(''));
+
+/* ===================== AVISO ===================== */
+let toastTimer = null, toastAccion = null;
+function aviso(texto, deshacer, esError){
+  clearTimeout(toastTimer);
+  $('#toastTxt').textContent = texto;
+  $('#toast').classList.toggle('error', !!esError);
+  toastAccion = deshacer || null;
+  $('#toastBtn').hidden = !deshacer;
+  $('#toast').hidden = false;
+  toastTimer = setTimeout(() => { $('#toast').hidden = true; toastAccion = null; }, deshacer ? 9000 : 4500);
+}
+$('#toastBtn').addEventListener('click', () => { const f = toastAccion; $('#toast').hidden = true; toastAccion = null; if (f) f(); });
+
+/* ===================== PANTALLA DE ESPERA ===================== */
+let ocupado = false, cargaTimer = null, cargaLento = null;
+function mostrarCarga(){
+  $('#cargaS').textContent = 'Espera un momento y no toques la pantalla.';
+  $('#carga').hidden = false;
+  $('main').inert = true; $('#nav').inert = true;
+  cargaLento = setTimeout(() => { $('#cargaS').textContent = 'Sigue cargando. Espera un poco más y no cierres la página.'; }, 8000);
+}
+function ocultarCarga(){
+  clearTimeout(cargaTimer); clearTimeout(cargaLento);
+  $('#carga').hidden = true;
+  $('main').inert = false; $('#nav').inert = false;
+}
+// Ejecuta una acción con la pantalla de espera. Si ya hay otra en curso, no hace nada y devuelve undefined.
+async function conCarga(fn){
+  if (ocupado) return undefined;
+  ocupado = true;
+  cargaTimer = setTimeout(mostrarCarga, 150);     // si responde rápido, ni se ve
+  try { return await fn(); }
+  finally { ocupado = false; ocultarCarga(); }
+}
+// Acción + lista actualizada (si estás en "Lista de asistencia"), todo en una sola espera.
+async function accion(fn){
+  return conCarga(async () => {
+    const r = await fn();
+    const l = (r.ok && !$('#vLista').hidden) ? await api('panel') : null;
+    return {r, l};
+  });
+}
+function ayuda(texto, buscando){
+  const a = $('#ayuda'); a.textContent = texto; a.classList.toggle('buscando', !!buscando);
+}
+async function recargar(){
+  const out = await conCarga(() => api('panel'));
+  if (!out) return;
+  if (pinInvalido(out)) return;
+  if (out.ok) pintarLista(out); else aviso(mensajeError(out), null, true);
+}
+
+/* ===================== ENTRADA ===================== */
+$('#pinForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const intento = $('#pin').value.trim(); if (!intento) return;
+  const btn = $('#pinBtn'); btn.disabled = true; btn.textContent = 'Verificando…'; $('#pinError').hidden = true;
+  const r = await conCarga(() => api('panel', {}, intento));
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (!r) return;
+  if (!r.ok){
+    $('#pinError').textContent = r.error === 'pin' ? 'PIN incorrecto.' : r.error === 'bloqueado' ? 'Demasiados intentos. Espera 5 minutos y vuelve a probar.' : mensajeError(r);
+    $('#pinError').hidden = false; $('#pin').select(); return;
+  }
+  PIN = intento;
+  try { sessionStorage.setItem('fonamus_pin', PIN); } catch (e) {}
+  $('#pin').value = '';
+  pintarLista(r);
+  entrarARegistrar();
+});
+function entrarARegistrar(){
+  $('#btnReiniciarDemo').hidden = !!CONFIG.API_URL;
+  mostrar('vBuscar'); ayuda(AYUDA); $('#q').focus();
+}
+function salir(mensaje){
+  PIN = null; listaPanel = []; ultimos = [];
+  try { sessionStorage.removeItem('fonamus_pin'); } catch (e) {}
+  $('#q').value = ''; $('#resultados').innerHTML = ''; $('#qPanel').value = '';
+  $('#pinError').textContent = mensaje || ''; $('#pinError').hidden = !mensaje;
+  mostrar('vPin'); $('#pin').focus();
+}
+
+/* ===================== REGISTRAR: BUSCAR Y MARCAR ===================== */
+let temporizador = null, secuencia = 0, ultimos = [];
+$('#q').addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(buscar, 280); });
+
+async function buscar(){
+  const q = $('#q').value;
+  const caja = $('#resultados');
+  if (norm(q).length < 3){ caja.innerHTML = ''; ayuda(AYUDA); return; }
+  const mia = ++secuencia;
+  ayuda('Buscando…', true);
+  const r = await api('buscar', {q});
+  if (mia !== secuencia) return;                 // llegó una respuesta vieja
+  if (pinInvalido(r)) return;
+  ayuda('');
+  if (!r.ok){ caja.innerHTML = `<div class="vacio">${esc(mensajeError(r))}</div>`; return; }
+  ultimos = r.resultados;
+  if (!ultimos.length){
+    caja.innerHTML = `<div class="vacio"><b>No hay nadie con ese nombre en la lista.</b><br>Prueba solo con un apellido. Si la persona no está, agrégala desde «Lista de asistencia».</div>`;
+    return;
+  }
+  caja.innerHTML = ultimos.map(p => `
+    <div class="persona">
+      <div class="persona__txt"><strong>${esc(p.nombre)}</strong><span>${esc(p.entidad)}</span><span>${esc(p.cargo)}</span></div>
+      <div class="persona__der">
+        ${p.presente
+          ? `<span class="etiqueta">Asistió ${esc(fmtHora(p.hora))}</span><button class="mini peligro" type="button" data-accion="deshacer" data-id="${esc(p.id)}">Deshacer</button>`
+          : `<button class="principal chico" type="button" data-accion="marcar" data-id="${esc(p.id)}">Marcar asistencia</button>`}
+      </div>
+    </div>`).join('');
+}
+
+async function marcar(id, presente){
+  return api('marcar', {id, presente});
+}
+async function deshacerAsistencia(id, nombre){
+  const out = await accion(() => marcar(id, false));
+  if (!out) return;
+  const {r, l} = out;
+  if (pinInvalido(r)) return;
+  if (!r.ok){ aviso(mensajeError(r), null, true); return; }
+  aviso('Se deshizo la asistencia de ' + nombre);
+  if (l && l.ok) pintarLista(l);
+  if (!$('#vBuscar').hidden && norm($('#q').value).length >= 3) buscar();
+}
+$('#resultados').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-accion]'); if (!b) return;
+  const id = b.dataset.id, p = ultimos.find(x => x.id === id);
+  if (b.dataset.accion === 'deshacer'){
+    if (!b.classList.contains('seguro')){ pedirConfirmacion(b); return; }
+    b.disabled = true; deshacerAsistencia(id, p ? p.nombre : ''); return;
+  }
+  b.disabled = true; b.textContent = 'Marcando…';
+  const out = await accion(() => marcar(id, true));
+  if (!out){ b.disabled = false; b.textContent = 'Marcar asistencia'; return; }
+  const r = out.r;
+  if (pinInvalido(r)) return;
+  if (!r.ok){ b.disabled = false; b.textContent = 'Marcar asistencia'; aviso(mensajeError(r), null, true); return; }
+  // Listo para la siguiente persona
+  $('#q').value = ''; $('#resultados').innerHTML = ''; ultimos = []; ayuda(AYUDA);
+  aviso(r.yaRegistrado ? `${r.nombre} ya estaba marcada a las ${fmtHora(r.hora)}`
+                       : `Asistencia marcada: ${r.nombre} (${fmtHora(r.hora)})`,
+        r.yaRegistrado ? null : () => deshacerAsistencia(id, r.nombre));
+  $('#q').focus();
+});
+// Deshacer pide un segundo toque para evitar errores.
+function pedirConfirmacion(b){
+  b.classList.add('seguro'); b.textContent = '¿Seguro?';
+  setTimeout(() => { if (b.isConnected){ b.classList.remove('seguro'); b.textContent = 'Deshacer'; } }, 3000);
+}
+
+/* ===================== LISTA DE ASISTENCIA ===================== */
+let listaPanel = [], filtro = 'todos', refresco = null;
+function iniciarRefresco(){ detenerRefresco(); refresco = setInterval(cargarLista, CONFIG.REFRESCO_LISTA_SEG * 1000); }
+function detenerRefresco(){ clearInterval(refresco); refresco = null; }
+async function cargarLista(){
+  if (!PIN || $('#vLista').hidden) return;
+  const r = await api('panel');
+  if (pinInvalido(r)) return;
+  if (r.ok) pintarLista(r);
+}
+function pintarLista(r){
+  listaPanel = r.lista;
+  const pres = r.presentes, tot = r.total, pct = tot ? Math.round(pres * 100 / tot) : 0;
+  $('#nPres').textContent = pres; $('#nTot').textContent = tot;
+  $('#nFaltan').textContent = `Faltan ${tot - pres} (${pct}% ya llegó)`;
+  const pr = $('#progreso'); pr.setAttribute('aria-valuenow', pct); pr.firstElementChild.style.width = pct + '%';
+  pintarFilas();
+}
+function pintarFilas(){
+  const toks = norm($('#qPanel').value).split(' ').filter(Boolean);
+  const filas = listaPanel
+    .filter(p => filtro === 'todos' || (filtro === 'presentes' ? p.presente : !p.presente))
+    .filter(p => toks.every(t => norm(p.nombre + ' ' + p.entidad).includes(t)))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  $('#listaPanel').innerHTML = filas.length ? filas.map(p => `
+    <div class="item">
+      <div class="item__txt"><strong>${esc(p.nombre)}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span></div>
+      <div class="item__der">
+        ${p.presente ? `<span class="hora">${esc(fmtHora(p.hora))}</span><button class="mini peligro" type="button" data-accion="deshacer" data-id="${esc(p.id)}">Deshacer</button>`
+                     : `<button class="mini ok" type="button" data-accion="marcar" data-id="${esc(p.id)}">Marcar asistencia</button>`}
+      </div>
+    </div>`).join('') : `<div class="vacio">No hay personas con ese filtro.</div>`;
+}
+$('#qPanel').addEventListener('input', pintarFilas);
+document.querySelectorAll('.filtros button').forEach(b => b.addEventListener('click', () => {
+  filtro = b.dataset.f;
+  document.querySelectorAll('.filtros button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  pintarFilas();
+}));
+$('#listaPanel').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-accion]'); if (!b) return;
+  const id = b.dataset.id, p = listaPanel.find(x => x.id === id);
+  if (b.dataset.accion === 'deshacer' && !b.classList.contains('seguro')){ pedirConfirmacion(b); return; }
+  b.disabled = true;
+  const marca = b.dataset.accion === 'marcar';
+  const out = await accion(() => marcar(id, marca));
+  if (!out){ b.disabled = false; return; }
+  const {r, l} = out;
+  if (pinInvalido(r)) return;
+  if (!r.ok){ b.disabled = false; aviso(mensajeError(r), null, true); return; }
+  if (marca) aviso(`Asistencia marcada: ${p ? p.nombre : ''}`, () => deshacerAsistencia(id, p ? p.nombre : ''));
+  else aviso('Se deshizo la asistencia de ' + (p ? p.nombre : ''));
+  if (l && l.ok) pintarLista(l);
+});
+$('#btnActualizar').addEventListener('click', recargar);
+$('#formAgregar').addEventListener('submit', async e => {
+  e.preventDefault();
+  const datos = {nombre: $('#aNombre').value.trim(), entidad: $('#aEntidad').value.trim(), cargo: $('#aCargo').value.trim(), presente: $('#aPresente').checked};
+  const out = await accion(() => api('agregar', datos));
+  if (!out) return;
+  const {r, l} = out;
+  if (pinInvalido(r)) return;
+  if (!r.ok){ aviso(r.error === 'nombre' ? 'Escribe el nombre completo (mínimo 3 letras).' : mensajeError(r), null, true); return; }
+  e.target.reset(); $('#aPresente').checked = true; e.target.closest('details').open = false;
+  aviso('Persona agregada a la lista');
+  if (l && l.ok) pintarLista(l);
+});
+$('#btnCSV').addEventListener('click', () => {
+  const celda = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const filas = [['ID','Nombres y apellidos','Entidad','Cargo','Asistencia FONAMUS','Hora']].concat(
+    listaPanel.map(p => [p.id, p.nombre, p.entidad, p.cargo, p.presente ? 'Asistió' : '', p.hora || '']));
+  const blob = new Blob(['\ufeff' + filas.map(f => f.map(celda).join(',')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'asistencia-fonamus.csv'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('#btnReiniciarDemo').addEventListener('click', () => { demoInit(); recargar(); });
+
+/* ===================== ARRANQUE ===================== */
+document.title = CONFIG.EVENTO + ' – ' + CONFIG.SUBTITULO;
+$('#evento').textContent = CONFIG.EVENTO;
+$('#subtitulo').textContent = CONFIG.SUBTITULO;
+if (CONFIG.FECHA_LUGAR){ $('#meta').textContent = CONFIG.FECHA_LUGAR; $('#meta').hidden = false; }
+if (!CONFIG.API_URL) $('#demoBanner').hidden = false;
+if (PIN) entrarARegistrar(); else { mostrar('vPin'); $('#pin').focus(); }
+</script>
+</body>
+</html>
