@@ -202,6 +202,7 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
       <h2>Asistencia en vivo</h2>
       <div class="acciones">
         <button class="sec" id="btnActualizar" type="button">Actualizar</button>
+        <button class="sec" id="btnPDFRes" type="button">PDF de resumen</button>
         <button class="sec" id="btnPDFConf" type="button">PDF de confirmaciones</button>
         <button class="sec" id="btnPDF" type="button">PDF de asistentes</button>
         <button class="sec" id="btnCSV" type="button">Descargar CSV</button>
@@ -257,6 +258,8 @@ const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycby045t1qMK-xxdF2nN-25g7UGFlsWGKscm8SqSmC1oIpX5uAf8HmTtSPRW3lvd2q2NZ/exec',                  // Pega aquí la URL de la aplicación web de Apps Script. Vacío = modo demostración.
   REFRESCO_LISTA_SEG: 20,       // Cada cuántos segundos se actualiza la lista de asistencia.
   PDF_TIPO_ACTOR: true,         // true: los PDF llevan la columna "Tipo de actor" (columna B del Sheet) después del N°.
+  PDF_RESUMEN_MUNICIPIOS: true,   // true: el PDF de resumen agrega la tabla de municipalidades por cargo (página 2).
+  PDF_RESUMEN_RESPONSABLES: true, // true: el PDF de resumen agrega la tabla de responsables (página 2). Es de uso interno.
   PDF_CONFIRMACION: false,      // true: el PDF agrega la columna "Estado de confirmación" (necesita la versión nueva de Code.gs).
   PDF_HORA: false,              // true: el PDF de asistentes agrega la hora de llegada de cada persona.
   PDF_CONF_SOLO_CONFIRMADOS: false  // true: el PDF de confirmaciones lista solo a quienes tienen "Confirmó" (el resumen siempre cuenta a todos).
@@ -623,18 +626,23 @@ async function pdfDesde(modo){
   if (pinInvalido(out)) return;
   if (!out.ok){ aviso(mensajeError(out), null, true); return; }
   pintarLista(out);
-  if (modo === 'confirmaciones' && out.lista.length && !('confirmacion' in out.lista[0])){
+  if ((modo === 'confirmaciones' || modo === 'resumen') && out.lista.length && !('confirmacion' in out.lista[0])){
     aviso('Falta actualizar el script (Code.gs) para leer la confirmación.', null, true); return;
   }
+  if (modo === 'resumen' && out.lista.length && !('tipo' in out.lista[0])){
+    aviso('Falta actualizar el script (Code.gs) para leer el tipo de actor.', null, true); return;
+  }
+  const faltaResp = modo === 'resumen' && CONFIG.PDF_RESUMEN_RESPONSABLES && out.lista.length && !('respOficio' in out.lista[0]);
   const faltaTipo = CONFIG.PDF_TIPO_ACTOR && out.lista.length && !('tipo' in out.lista[0]);
-  try { construirPDF(out, modo); aviso(faltaTipo ? 'PDF generado sin Tipo de actor: falta actualizar el script (Code.gs).' : 'PDF generado. Revisa tus descargas.'); }
+  try { construirPDF(out, modo); aviso(faltaTipo ? 'PDF generado sin Tipo de actor: falta actualizar el script (Code.gs).' : faltaResp ? 'PDF generado sin la tabla de responsables: falta actualizar el script (Code.gs).' : 'PDF generado. Revisa tus descargas.'); }
   catch (e) { console.error(e); aviso('No se pudo crear el PDF. Inténtalo de nuevo.', null, true); }
 }
 $('#btnPDF').addEventListener('click', () => pdfDesde('asistentes'));
 $('#btnPDFConf').addEventListener('click', () => pdfDesde('confirmaciones'));
+$('#btnPDFRes').addEventListener('click', () => pdfDesde('resumen'));
 
 function construirPDF(r, modo){
-  const conf = modo === 'confirmaciones';
+  const asis = modo === 'asistentes', resu = modo === 'resumen', conf = modo === 'confirmaciones';
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
@@ -644,7 +652,8 @@ function construirPDF(r, modo){
   const fecha = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`, hora = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const TITULO = latin(CONFIG.EVENTO);
   const soloConf = conf && CONFIG.PDF_CONF_SOLO_CONFIRMADOS;
-  const SUB = !conf ? 'Lista de participantes asistentes' : soloConf ? 'Lista de participantes confirmados' : 'Avance de confirmaciones';
+  const SUB = asis ? 'Lista de participantes asistentes' : resu ? 'Resumen de invitaciones y confirmaciones'
+            : soloConf ? 'Lista de participantes confirmados' : 'Avance de confirmaciones';
   const pie = `${TITULO} - ${SUB} - corte al ${fecha} ${hora}`;
   const pc = x => (total ? Math.round(x * 100 / total) : 0) + ' %';
 
@@ -664,7 +673,157 @@ function construirPDF(r, modo){
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...SUAVE); doc.text(txt, tx, 54.4);
   };
 
-  // Columnas de la tabla. "Tipo de actor" va después del N° (igual que en el Sheet).
+  // Conteo por estado de confirmación (columna "Estado de confirmación")
+  const cnt = {conf:0, proc:0, no:0, sin:0, otro:0};
+  if (!asis) r.lista.forEach(p => cnt[estadoConfirmacion(p)]++);
+  const sinEstado = cnt.sin + cnt.otro;
+  const dibujarAvanceConfirmaciones = () => {
+    [[M, total, 'Invitados en la lista', null],
+     [M + 54, cnt.conf, `Confirmaron (${pc(cnt.conf)})`, VERDE],
+     [M + 108, cnt.proc, `En proceso (${pc(cnt.proc)})`, AMBAR],
+     [M + 162, cnt.no, `No asistirán (${pc(cnt.no)})`, ROJO],
+     [M + 216, sinEstado, `Sin estado (${pc(sinEstado)})`, GRIS]
+    ].forEach(([x, num, txt, color]) => { numero(x, num); etiqueta(x, txt, color); });
+    // Barra apilada: verde confirmados, ámbar en proceso, rojo no asistirán, gris sin estado
+    const ancho = W - 2 * M; let x = M;
+    doc.setFillColor(...GRIS); doc.rect(M, 59, ancho, 3.6, 'F');
+    [[cnt.conf, VERDE], [cnt.proc, AMBAR], [cnt.no, ROJO]].forEach(([c, col]) => {
+      if (!total || !c) return;
+      const w = ancho * c / total; doc.setFillColor(...col); doc.rect(x, 59, w, 3.6, 'F'); x += w;
+    });
+  };
+
+  const baseTabla = {
+    startY: 68, margin: {top: 21, left: M, right: M, bottom: 16},
+    theme: 'grid', rowPageBreak: 'avoid',
+    headStyles: {fillColor:ASF, textColor:[255,255,255], fontStyle:'bold', lineColor:ASF},
+    alternateRowStyles: {fillColor:[243,247,250]},
+    didDrawPage: data => {
+      const pag = doc.internal.getCurrentPageInfo().pageNumber;   // página real del documento (data.pageNumber cuenta por tabla)
+      if (pag > 1){
+        doc.setFillColor(...ASF); doc.rect(0, 0, W, 11, 'F'); lineaCarril(12.2);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255); doc.text(`${TITULO} - ${SUB}`, M, 7.4);
+      }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...SUAVE);
+      doc.text(pie, M, H - 7);
+      doc.text(`Página ${pag} de {total_pages_count_string}`, W - M, H - 7, {align:'right'});
+    }
+  };
+  const estiloBase = (fs, pad2) => ({font:'helvetica', fontSize:fs, cellPadding:pad2, textColor:TINTA, lineColor:[211,219,225], lineWidth:0.15, valign:'middle'});
+  const nombreSeguro = pref => `${pref}-${TITULO.replace(/[^A-Za-z0-9]+/g, '-')}_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.pdf`;
+
+  if (resu){
+    // ----- Resumen (reemplaza los cuadros de la pestaña RESUMEN): todo se calcula desde la lista -----
+    const vacioC = () => ({n:0, conf:0, proc:0, no:0, sin:0});
+    const sumar = (o, p) => { o.n++; const e = estadoConfirmacion(p); if (e === 'conf') o.conf++; else if (e === 'proc') o.proc++; else if (e === 'no') o.no++; else o.sin++; };
+    const sumaFilas = (arr, t) => arr.reduce((a, o) => ({t, n:a.n+o.n, conf:a.conf+o.conf, proc:a.proc+o.proc, no:a.no+o.no, sin:a.sin+o.sin}), {t, n:0, conf:0, proc:0, no:0, sin:0});
+    const centro = w => ({halign:'center', cellWidth:w});
+    const filaTotal = n => data => {
+      if (data.section === 'body' && data.row.index === n - 1){ data.cell.styles.fontStyle = 'bold'; data.cell.styles.fillColor = [226,232,237]; }
+    };
+    dibujarAvanceConfirmaciones();
+
+    // Página 1: por tipo de actor (todos los tipos que existan; vacío o "-" se agrupa en "Sin tipo")
+    const grupos = {}, orden = [];
+    r.lista.forEach(p => {
+      let t = String(p.tipo || '').trim(); if (t === '' || t === '-') t = 'Sin tipo';
+      if (!grupos[t]){ grupos[t] = Object.assign(vacioC(), {t}); orden.push(t); }
+      sumar(grupos[t], p);
+    });
+    if (orden.includes('Sin tipo')) orden.push(orden.splice(orden.indexOf('Sin tipo'), 1)[0]);
+    const filasObj = orden.map(k => grupos[k]); filasObj.push(sumaFilas(filasObj, 'Total'));
+    doc.autoTable(Object.assign({}, baseTabla, {
+      head: [['Tipo de actor', 'Invitados', 'Confirmó', 'En proceso', 'No asistirá', 'Sin estado', 'Avance (% que confirmó)']],
+      body: filasObj.map(o => [latin(o.t), o.n, o.conf, o.proc, o.no, o.sin, '']),
+      startY: 66,
+      styles: estiloBase(9, 0.95),
+      columnStyles: {0:{cellWidth:62}, 1:centro(22), 2:centro(22), 3:centro(22), 4:centro(22), 5:centro(22)},
+      didParseCell: data => {
+        filaTotal(filasObj.length)(data);
+        if (data.section === 'head' && data.column.index > 0 && data.column.index < 6) data.cell.styles.halign = 'center';
+      },
+      didDrawCell: data => {
+        if (data.section !== 'body' || data.column.index !== 6) return;
+        const o = filasObj[data.row.index]; if (!o || !o.n) return;
+        const x0 = data.cell.x + 2, w = Math.max(Math.min(data.cell.width - 20, 70), 20), y0 = data.cell.y + data.cell.height / 2 - 1.6;
+        let cx = x0;
+        [[o.conf, VERDE], [o.proc, AMBAR], [o.no, ROJO], [o.sin, GRIS]].forEach(([c, col]) => {
+          if (!c) return; const sw = w * c / o.n; doc.setFillColor(...col); doc.rect(cx, y0, sw, 3.2, 'F'); cx += sw;
+        });
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...TINTA);
+        doc.text(Math.round(o.conf * 100 / o.n) + ' %', x0 + w + 3, data.cell.y + data.cell.height / 2 + 1.1);
+      }
+    }));
+
+    // Página 2: municipalidades por cargo y responsables
+    const conMuni = CONFIG.PDF_RESUMEN_MUNICIPIOS;
+    const conResp = CONFIG.PDF_RESUMEN_RESPONSABLES && r.lista.length && 'respOficio' in r.lista[0];
+    const notas = ['Invitados = personas con nombre en la lista. No se cuentan las filas sin nombre (por ejemplo, funcionarios por designar o nuevos alcaldes pendientes). Sin estado = celda de confirmación vacía.'];
+    let yFin = doc.lastAutoTable.finalY;
+    if (conMuni || conResp){
+      doc.addPage();
+      const titulo = (x, txt) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text(txt, x, 25); };
+      let yIzq = 0, yDer = 0;
+      if (conMuni){
+        const catCargo = c => { const t = norm(c); return t.includes('subgerente') ? 'Subgerente' : t.includes('gerente') ? 'Gerente' : t.includes('alcalde') ? 'Alcalde/sa' : t.includes('funcionario') ? 'Funcionario' : 'Otros'; };
+        const cat = {}; ['Alcalde/sa', 'Gerente', 'Subgerente', 'Funcionario', 'Otros'].forEach(k => cat[k] = Object.assign(vacioC(), {t:k}));
+        const munis = r.lista.filter(p => norm(p.tipo) === 'municipalidad');
+        munis.forEach(p => sumar(cat[catCargo(p.cargo)], p));
+        const fm = Object.values(cat).filter(o => o.n > 0); fm.push(sumaFilas(fm, 'Total'));
+        titulo(M, `Municipalidades por cargo (${munis.length} invitados)`);
+        doc.autoTable(Object.assign({}, baseTabla, {
+          head: [['Cargo', 'Invitados', 'Confirmó', 'En proceso', 'No asistirá', 'Sin estado']],
+          body: fm.map(o => [latin(o.t), o.n, o.conf, o.proc, o.no, o.sin]),
+          startY: 29, margin: {top: 21, left: M, right: W - (M + 118), bottom: 16}, tableWidth: 118,
+          styles: estiloBase(9, 1.8), headStyles: Object.assign({}, baseTabla.headStyles, {fontSize:8.5}),
+          columnStyles: {0:{cellWidth:28}, 1:centro(18), 2:centro(18), 3:centro(18), 4:centro(18), 5:centro(18)},
+          didParseCell: data => { filaTotal(fm.length)(data); if (data.section === 'head' && data.column.index > 0) data.cell.styles.halign = 'center'; }
+        }));
+        yIzq = doc.lastAutoTable.finalY;
+        notas.push('Municipalidades: se agrupan por el texto del cargo (Subgerente, Gerente, Alcalde/sa, Funcionario). Otros = cargos que no encajan en esos grupos.');
+      }
+      if (conResp){
+        const canon = {}, veces = {};
+        const clave = s => norm(s);
+        r.lista.forEach(p => [p.respOficio, p.respSeg].forEach(s => { s = String(s || '').trim(); if (!s) return; const k = clave(s); (veces[k] = veces[k] || {})[s] = (veces[k][s] || 0) + 1; }));
+        Object.keys(veces).forEach(k => { canon[k] = Object.entries(veces[k]).sort((a, b) => b[1] - a[1] || (b[0].normalize('NFD') !== b[0]) - (a[0].normalize('NFD') !== a[0]))[0][0]; });
+        const resp = {}; Object.keys(canon).forEach(k => resp[k] = {t:canon[k], asig:0, env:0, seg:0, conf:0});
+        const sinR = {t:'Sin asignar', asig:0, env:null, seg:0, conf:0};
+        r.lista.forEach(p => {
+          const ko = clave(p.respOficio), ks = clave(p.respSeg), e = estadoConfirmacion(p);
+          if (ko){ resp[ko].asig++; if (norm(p.gestion) === 'enviado') resp[ko].env++; } else sinR.asig++;
+          if (ks){ resp[ks].seg++; if (e === 'conf') resp[ks].conf++; } else { sinR.seg++; if (e === 'conf') sinR.conf++; }
+        });
+        const fr = Object.values(resp).sort((a, b) => b.asig - a.asig || a.t.localeCompare(b.t, 'es'));
+        fr.push(sinR);
+        const tr = fr.reduce((a, o) => ({t:'Total', asig:a.asig+o.asig, env:a.env+(o.env || 0), seg:a.seg+o.seg, conf:a.conf+o.conf}), {t:'Total', asig:0, env:0, seg:0, conf:0});
+        fr.push(tr);
+        const xDer = M + 118 + 9;
+        titulo(xDer, 'Responsables de oficio y de seguimiento');
+        doc.autoTable(Object.assign({}, baseTabla, {
+          head: [['Responsable', 'Oficios asignados', 'Oficios enviados', 'Seguimiento asignado', 'Confirmaron']],
+          body: fr.map(o => [latin(o.t), o.asig, o.env === null ? '-' : o.env, o.seg, o.conf]),
+          startY: 29, margin: {top: 21, left: xDer, right: M, bottom: 16}, tableWidth: W - M - xDer,
+          styles: estiloBase(9, 1.35), headStyles: Object.assign({}, baseTabla.headStyles, {fontSize:8.5}),
+          columnStyles: {0:{cellWidth:34}, 1:centro(27), 2:centro(27), 3:centro(27), 4:centro(27)},
+          didParseCell: data => { filaTotal(fr.length)(data); if (data.section === 'head' && data.column.index > 0) data.cell.styles.halign = 'center'; }
+        }));
+        yDer = doc.lastAutoTable.finalY;
+        notas.push('Responsables: Oficios asignados = personas cuyo responsable de oficio es esa persona. Oficios enviados = de esos, los que tienen estado de gestión «Enviado». Seguimiento asignado = personas cuyo responsable de seguimiento es esa persona. Confirmaron = de esas, las que tienen estado «Confirmó». Los totales coinciden con los invitados.');
+      }
+      yFin = Math.max(yIzq, yDer);
+    }
+    // Notas de lectura
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...SUAVE);
+    const lineas = notas.flatMap(t => doc.splitTextToSize(latin(t), W - 2 * M));
+    const yNota = yFin + 7;
+    if (yNota + lineas.length * 3.8 < H - 16) doc.text(lineas, M, yNota);
+    doc.putTotalPages('{total_pages_count_string}');
+    doc.save(nombreSeguro('Resumen'));
+    return;
+  }
+
+  // Columnas de las listas de personas. "Tipo de actor" va después del N° (igual que en el Sheet).
   const conTipo = CONFIG.PDF_TIPO_ACTOR && r.lista.some(p => p.tipo);
   const entidadDe = p => (conTipo && p.entidadSola !== undefined) ? (p.entidadSola || '-') : p.entidad;
   const cNum = {h:'N°', v:(p, i) => i + 1, w:12, al:'center'};
@@ -675,7 +834,7 @@ function construirPDF(r, modo){
   const defs = [cNum]; if (conTipo) defs.push(cTipo); defs.push(cNom, cEnt, cCar);
 
   let lista, vacio, nombreArchivo;
-  if (!conf){
+  if (asis){
     // ----- Asistentes (durante el evento) -----
     lista = r.lista.filter(p => p.presente);
     const n = lista.length, pct = total ? Math.round(n * 100 / total) : 0;
@@ -689,22 +848,7 @@ function construirPDF(r, modo){
     vacio = 'Aún no hay asistentes registrados.'; nombreArchivo = 'Asistentes';
   } else {
     // ----- Confirmaciones (antes del evento): sale de la columna "Estado de confirmación" -----
-    const cnt = {conf:0, proc:0, no:0, sin:0, otro:0};
-    r.lista.forEach(p => cnt[estadoConfirmacion(p)]++);
-    const sin = cnt.sin + cnt.otro;
-    [[M, total, 'Invitados en la lista', null],
-     [M + 54, cnt.conf, `Confirmaron (${pc(cnt.conf)})`, VERDE],
-     [M + 108, cnt.proc, `En proceso (${pc(cnt.proc)})`, AMBAR],
-     [M + 162, cnt.no, `No asistirán (${pc(cnt.no)})`, ROJO],
-     [M + 216, sin, `Sin estado (${pc(sin)})`, GRIS]
-    ].forEach(([x, num, txt, color]) => { numero(x, num); etiqueta(x, txt, color); });
-    // Barra apilada: verde confirmados, ámbar en proceso, rojo no asistirán, gris sin estado
-    const ancho = W - 2 * M; let x = M;
-    doc.setFillColor(...GRIS); doc.rect(M, 59, ancho, 3.6, 'F');
-    [[cnt.conf, VERDE], [cnt.proc, AMBAR], [cnt.no, ROJO]].forEach(([c, col]) => {
-      if (!total || !c) return;
-      const w = ancho * c / total; doc.setFillColor(...col); doc.rect(x, 59, w, 3.6, 'F'); x += w;
-    });
+    dibujarAvanceConfirmaciones();
     lista = soloConf ? r.lista.filter(p => estadoConfirmacion(p) === 'conf') : r.lista;
     const texto = p => { const e = estadoConfirmacion(p); return e === 'conf' ? 'Confirmó' : e === 'proc' ? 'En proceso' : e === 'no' ? 'No asistirá' : e === 'sin' ? 'Sin estado' : latin(p.confirmacion); };
     defs.push({h:'Confirmación', v:texto, w:30, bold:true, conf:true});
@@ -717,32 +861,19 @@ function construirPDF(r, modo){
   defs.forEach((c, i) => { const s = {}; if (c.w) s.cellWidth = c.w; if (c.al) s.halign = c.al; if (c.bold) s.fontStyle = 'bold'; if (Object.keys(s).length) estilosCol[i] = s; });
   const idxConf = defs.findIndex(c => c.conf);
 
-  doc.autoTable({
+  doc.autoTable(Object.assign({}, baseTabla, {
     head: [defs.map(c => c.h)], body: filas,
-    startY: 68, margin: {top: 21, left: M, right: M, bottom: 16},
-    theme: 'grid', rowPageBreak: 'avoid',
-    styles: {font:'helvetica', fontSize: conTipo ? 9 : 9.5, cellPadding:2.4, textColor:TINTA, lineColor:[211,219,225], lineWidth:0.15, valign:'middle'},
-    headStyles: {fillColor:ASF, textColor:[255,255,255], fontStyle:'bold', lineColor:ASF},
-    alternateRowStyles: {fillColor:[243,247,250]},
+    styles: estiloBase(conTipo ? 9 : 9.5, 2.4),
     columnStyles: estilosCol,
     didParseCell: data => {
       if (idxConf >= 0 && data.section === 'body' && data.column.index === idxConf && lista.length){
         const e = estadoConfirmacion(lista[data.row.index]);
         data.cell.styles.textColor = e === 'conf' ? VERDE : e === 'proc' ? [166,106,0] : e === 'no' ? ROJO : SUAVE;
       }
-    },
-    didDrawPage: data => {
-      if (data.pageNumber > 1){
-        doc.setFillColor(...ASF); doc.rect(0, 0, W, 11, 'F'); lineaCarril(12.2);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255); doc.text(`${TITULO} - ${SUB}`, M, 7.4);
-      }
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...SUAVE);
-      doc.text(pie, M, H - 7);
-      doc.text(`Página ${data.pageNumber} de {total_pages_count_string}`, W - M, H - 7, {align:'right'});
     }
-  });
+  }));
   doc.putTotalPages('{total_pages_count_string}');
-  doc.save(`${nombreArchivo}-${TITULO.replace(/[^A-Za-z0-9]+/g, '-')}_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.pdf`);
+  doc.save(nombreSeguro(nombreArchivo));
 }
 
 $('#btnCSV').addEventListener('click', () => {
