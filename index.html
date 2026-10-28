@@ -758,12 +758,9 @@ function construirPDF(r, modo){
     // Página 2: municipalidades por cargo y responsables
     const conMuni = CONFIG.PDF_RESUMEN_MUNICIPIOS;
     const conResp = CONFIG.PDF_RESUMEN_RESPONSABLES && r.lista.length && 'respOficio' in r.lista[0];
-    const notas = ['Invitados = personas con nombre en la lista. No se cuentan las filas sin nombre (por ejemplo, funcionarios por designar o nuevos alcaldes pendientes). Sin estado = celda de confirmación vacía.'];
-    let yFin = doc.lastAutoTable.finalY;
     if (conMuni || conResp){
       doc.addPage();
       const titulo = (x, txt) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TINTA); doc.text(txt, x, 25); };
-      let yIzq = 0, yDer = 0;
       if (conMuni){
         const catCargo = c => { const t = norm(c); return t.includes('subgerente') ? 'Subgerente' : t.includes('gerente') ? 'Gerente' : t.includes('alcalde') ? 'Alcalde/sa' : t.includes('funcionario') ? 'Funcionario' : 'Otros'; };
         const cat = {}; ['Alcalde/sa', 'Gerente', 'Subgerente', 'Funcionario', 'Otros'].forEach(k => cat[k] = Object.assign(vacioC(), {t:k}));
@@ -779,8 +776,6 @@ function construirPDF(r, modo){
           columnStyles: {0:{cellWidth:28}, 1:centro(18), 2:centro(18), 3:centro(18), 4:centro(18), 5:centro(18)},
           didParseCell: data => { filaTotal(fm.length)(data); if (data.section === 'head' && data.column.index > 0) data.cell.styles.halign = 'center'; }
         }));
-        yIzq = doc.lastAutoTable.finalY;
-        notas.push('Municipalidades: se agrupan por el texto del cargo (Subgerente, Gerente, Alcalde/sa, Funcionario). Otros = cargos que no encajan en esos grupos.');
       }
       if (conResp){
         const canon = {}, veces = {};
@@ -808,16 +803,8 @@ function construirPDF(r, modo){
           columnStyles: {0:{cellWidth:34}, 1:centro(27), 2:centro(27), 3:centro(27), 4:centro(27)},
           didParseCell: data => { filaTotal(fr.length)(data); if (data.section === 'head' && data.column.index > 0) data.cell.styles.halign = 'center'; }
         }));
-        yDer = doc.lastAutoTable.finalY;
-        notas.push('Responsables: Oficios asignados = personas cuyo responsable de oficio es esa persona. Oficios enviados = de esos, los que tienen estado de gestión «Enviado». Seguimiento asignado = personas cuyo responsable de seguimiento es esa persona. Confirmaron = de esas, las que tienen estado «Confirmó». Los totales coinciden con los invitados.');
       }
-      yFin = Math.max(yIzq, yDer);
     }
-    // Notas de lectura
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...SUAVE);
-    const lineas = notas.flatMap(t => doc.splitTextToSize(latin(t), W - 2 * M));
-    const yNota = yFin + 7;
-    if (yNota + lineas.length * 3.8 < H - 16) doc.text(lineas, M, yNota);
     doc.putTotalPages('{total_pages_count_string}');
     doc.save(nombreSeguro('Resumen'));
     return;
