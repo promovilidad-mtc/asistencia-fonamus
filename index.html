@@ -256,6 +256,7 @@ const CONFIG = {
   FECHA_LUGAR: '',              // Opcional. Ejemplo: '12 de noviembre, Lima'
   API_URL: 'https://script.google.com/macros/s/AKfycby045t1qMK-xxdF2nN-25g7UGFlsWGKscm8SqSmC1oIpX5uAf8HmTtSPRW3lvd2q2NZ/exec',                  // Pega aquí la URL de la aplicación web de Apps Script. Vacío = modo demostración.
   REFRESCO_LISTA_SEG: 20,       // Cada cuántos segundos se actualiza la lista de asistencia.
+  PDF_TIPO_ACTOR: true,         // true: los PDF llevan la columna "Tipo de actor" (columna B del Sheet) después del N°.
   PDF_CONFIRMACION: false,      // true: el PDF agrega la columna "Estado de confirmación" (necesita la versión nueva de Code.gs).
   PDF_HORA: false,              // true: el PDF de asistentes agrega la hora de llegada de cada persona.
   PDF_CONF_SOLO_CONFIRMADOS: false  // true: el PDF de confirmaciones lista solo a quienes tienen "Confirmó" (el resumen siempre cuenta a todos).
@@ -276,22 +277,22 @@ const mensajeError = r => r.error === 'red' ? MSG_RED : r.error === 'no_existe' 
 
 /* ===================== DATOS DE EJEMPLO (solo modo demo) ===================== */
 const DEMO = [
-  ['P001','Lucía Fernández Rojas','Municipalidad Provincial de Ejemplo','Alcaldesa','','Confirmó'],
-  ['P002','Carlos Mendoza Quispe','Universidad Nacional de Ejemplo','Docente investigador','2026-11-12 08:41:10','Confirmó'],
-  ['P003','Ana María Peña Salazar','Ministerio de Ejemplo','Directora general','','En proceso'],
-  ['P004','Jorge Peña Huamán','Gobierno Regional de Ejemplo','Gerente de Infraestructura','','No Asistirá'],
-  ['P005','Rosa Ñahui Condori','Municipalidad Distrital de Muestra','Regidora','','Confirmó'],
-  ['P006','Miguel Ángel Torres Vega','Colegio de Ingenieros (sede de ejemplo)','Decano','','En proceso'],
-  ['P007','Daniela Quiroz Paredes','Embajada de Ejemplo','Segunda secretaria','2026-11-12 08:55:32','Confirmó'],
-  ['P008','Héctor Mendoza Lara','Cooperación de Ejemplo','Especialista en transporte','',''],
-  ['P009','Sofía Castillo Rivera','Autoridad de Transporte de Ejemplo','Presidenta ejecutiva','','Confirmó'],
-  ['P010','Luis Alberto Vargas Cruz','Universidad Privada de Muestra','Vicerrector de Investigación','','En proceso'],
-  ['P011','Patricia Núñez Alarcón','Organización civil de Ejemplo','Coordinadora','',''],
-  ['P012','Raúl Gutiérrez Mamani','Municipalidad Provincial de Muestra','Gerente de Movilidad','','Confirmó']
+  ['P001','Lucía Fernández Rojas','Municipalidad Provincial de Ejemplo','Alcaldesa','','Confirmó','Municipalidad'],
+  ['P002','Carlos Mendoza Quispe','Universidad Nacional de Ejemplo','Docente investigador','2026-11-12 08:41:10','Confirmó','Academia'],
+  ['P003','Ana María Peña Salazar','Ministerio de Ejemplo','Directora general','','En proceso','Nacional'],
+  ['P004','Jorge Peña Huamán','Gobierno Regional de Ejemplo','Gerente de Infraestructura','','No Asistirá','Municipalidad'],
+  ['P005','Rosa Ñahui Condori','Municipalidad Distrital de Muestra','Regidora','','Confirmó','Municipalidad'],
+  ['P006','Miguel Ángel Torres Vega','Colegio de Ingenieros (sede de ejemplo)','Decano','','En proceso','Sociedad civil'],
+  ['P007','Daniela Quiroz Paredes','Embajada de Ejemplo','Segunda secretaria','2026-11-12 08:55:32','Confirmó','Embajada'],
+  ['P008','Héctor Mendoza Lara','Cooperación de Ejemplo','Especialista en transporte','','','Cooperación'],
+  ['P009','Sofía Castillo Rivera','Autoridad de Transporte de Ejemplo','Presidenta ejecutiva','','Confirmó','Nacional'],
+  ['P010','Luis Alberto Vargas Cruz','Universidad Privada de Muestra','Vicerrector de Investigación','','En proceso','Academia'],
+  ['P011','Patricia Núñez Alarcón','Organización civil de Ejemplo','Coordinadora','','','Sociedad civil'],
+  ['P012','Raúl Gutiérrez Mamani','Municipalidad Provincial de Muestra','Gerente de Movilidad','','Confirmó','Municipalidad']
 ];
 let demoDB = null;
 let DEMO_LATENCIA = 250;
-function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion]) => ({id,nombre,entidad,cargo,presente:!!hora,hora,confirmacion})); }
+function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion,tipo]) => ({id,nombre,entidad,entidadSola:entidad,cargo,presente:!!hora,hora,confirmacion,tipo})); }
 async function demoApi(action, d, pin){
   if (!demoDB) demoInit();
   await sleep(DEMO_LATENCIA);
@@ -625,7 +626,8 @@ async function pdfDesde(modo){
   if (modo === 'confirmaciones' && out.lista.length && !('confirmacion' in out.lista[0])){
     aviso('Falta actualizar el script (Code.gs) para leer la confirmación.', null, true); return;
   }
-  try { construirPDF(out, modo); aviso('PDF generado. Revisa tus descargas.'); }
+  const faltaTipo = CONFIG.PDF_TIPO_ACTOR && out.lista.length && !('tipo' in out.lista[0]);
+  try { construirPDF(out, modo); aviso(faltaTipo ? 'PDF generado sin Tipo de actor: falta actualizar el script (Code.gs).' : 'PDF generado. Revisa tus descargas.'); }
   catch (e) { console.error(e); aviso('No se pudo crear el PDF. Inténtalo de nuevo.', null, true); }
 }
 $('#btnPDF').addEventListener('click', () => pdfDesde('asistentes'));
@@ -662,40 +664,40 @@ function construirPDF(r, modo){
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...SUAVE); doc.text(txt, tx, 54.4);
   };
 
-  let cols, filas, estilosCol, nombreArchivo;
+  // Columnas de la tabla. "Tipo de actor" va después del N° (igual que en el Sheet).
+  const conTipo = CONFIG.PDF_TIPO_ACTOR && r.lista.some(p => p.tipo);
+  const entidadDe = p => (conTipo && p.entidadSola !== undefined) ? (p.entidadSola || '-') : p.entidad;
+  const cNum = {h:'N°', v:(p, i) => i + 1, w:12, al:'center'};
+  const cTipo = {h:'Tipo de actor', v:p => latin(p.tipo) || '-', w:34};
+  const cNom = {h:'Nombres y apellidos', v:p => latin(p.nombre), w: conTipo ? 58 : 68};
+  const cEnt = {h:'Entidad', v:p => latin(entidadDe(p))};
+  const cCar = {h:'Cargo', v:p => latin(p.cargo)};
+  const defs = [cNum]; if (conTipo) defs.push(cTipo); defs.push(cNom, cEnt, cCar);
+
+  let lista, vacio, nombreArchivo;
   if (!conf){
     // ----- Asistentes (durante el evento) -----
-    const asist = r.lista.filter(p => p.presente), n = asist.length;
+    lista = r.lista.filter(p => p.presente);
+    const n = lista.length, pct = total ? Math.round(n * 100 / total) : 0;
     numero(M, n); etiqueta(M, 'Asistentes registrados');
     numero(M + 62, total); etiqueta(M + 62, 'Personas en la lista');
     numero(M + 124, pc(n)); etiqueta(M + 124, 'Avance de asistencia');
-    const pct = total ? Math.round(n * 100 / total) : 0;
     doc.setFillColor(...ASF); doc.roundedRect(M, 59, W - 2 * M, 3.4, 1.7, 1.7, 'F');
     if (pct > 0){ doc.setFillColor(...LIN); doc.roundedRect(M, 59, Math.max((W - 2 * M) * pct / 100, 3.4), 3.4, 1.7, 1.7, 'F'); }
-    const conConf = CONFIG.PDF_CONFIRMACION && r.lista.some(p => p.confirmacion);
-    cols = ['N°', 'Nombres y apellidos', 'Entidad', 'Cargo']; if (conConf) cols.push('Confirmación'); if (CONFIG.PDF_HORA) cols.push('Hora');
-    filas = n ? asist.map((p, i) => {
-      const f = [i + 1, latin(p.nombre), latin(p.entidad), latin(p.cargo)];
-      if (conConf) f.push(latin(p.confirmacion));
-      if (CONFIG.PDF_HORA) f.push(String(p.hora || '').length >= 16 ? p.hora.slice(11, 16) : '');
-      return f;
-    }) : [[{content:'Aún no hay asistentes registrados.', colSpan:cols.length, styles:{halign:'center', textColor:SUAVE}}]];
-    estilosCol = {0:{cellWidth:12, halign:'center'}, 1:{cellWidth:68}};
-    let k = 4; if (conConf){ estilosCol[k] = {cellWidth:28}; k++; } if (CONFIG.PDF_HORA) estilosCol[k] = {cellWidth:16, halign:'center'};
-    nombreArchivo = 'Asistentes';
+    if (CONFIG.PDF_CONFIRMACION && r.lista.some(p => p.confirmacion)) defs.push({h:'Confirmación', v:p => latin(p.confirmacion), w:28});
+    if (CONFIG.PDF_HORA) defs.push({h:'Hora', v:p => String(p.hora || '').length >= 16 ? p.hora.slice(11, 16) : '', w:16, al:'center'});
+    vacio = 'Aún no hay asistentes registrados.'; nombreArchivo = 'Asistentes';
   } else {
     // ----- Confirmaciones (antes del evento): sale de la columna "Estado de confirmación" -----
     const cnt = {conf:0, proc:0, no:0, sin:0, otro:0};
     r.lista.forEach(p => cnt[estadoConfirmacion(p)]++);
     const sin = cnt.sin + cnt.otro;
-    const bloques = [
-      [M,       total,    'Invitados en la lista', null],
-      [M + 54,  cnt.conf, `Confirmaron (${pc(cnt.conf)})`, VERDE],
-      [M + 108, cnt.proc, `En proceso (${pc(cnt.proc)})`, AMBAR],
-      [M + 162, cnt.no,   `No asistirán (${pc(cnt.no)})`, ROJO],
-      [M + 216, sin,      `Sin estado (${pc(sin)})`, GRIS]
-    ];
-    bloques.forEach(([x, num, txt, color]) => { numero(x, num); etiqueta(x, txt, color); });
+    [[M, total, 'Invitados en la lista', null],
+     [M + 54, cnt.conf, `Confirmaron (${pc(cnt.conf)})`, VERDE],
+     [M + 108, cnt.proc, `En proceso (${pc(cnt.proc)})`, AMBAR],
+     [M + 162, cnt.no, `No asistirán (${pc(cnt.no)})`, ROJO],
+     [M + 216, sin, `Sin estado (${pc(sin)})`, GRIS]
+    ].forEach(([x, num, txt, color]) => { numero(x, num); etiqueta(x, txt, color); });
     // Barra apilada: verde confirmados, ámbar en proceso, rojo no asistirán, gris sin estado
     const ancho = W - 2 * M; let x = M;
     doc.setFillColor(...GRIS); doc.rect(M, 59, ancho, 3.6, 'F');
@@ -703,27 +705,29 @@ function construirPDF(r, modo){
       if (!total || !c) return;
       const w = ancho * c / total; doc.setFillColor(...col); doc.rect(x, 59, w, 3.6, 'F'); x += w;
     });
-    cols = ['N°', 'Nombres y apellidos', 'Entidad', 'Cargo', 'Confirmación'];
-    const lista = soloConf ? r.lista.filter(p => estadoConfirmacion(p) === 'conf') : r.lista;
+    lista = soloConf ? r.lista.filter(p => estadoConfirmacion(p) === 'conf') : r.lista;
     const texto = p => { const e = estadoConfirmacion(p); return e === 'conf' ? 'Confirmó' : e === 'proc' ? 'En proceso' : e === 'no' ? 'No asistirá' : e === 'sin' ? 'Sin estado' : latin(p.confirmacion); };
-    filas = lista.length ? lista.map((p, i) => [i + 1, latin(p.nombre), latin(p.entidad), latin(p.cargo), texto(p)])
-                         : [[{content:'No hay personas con ese estado.', colSpan:cols.length, styles:{halign:'center', textColor:SUAVE}}]];
-    estilosCol = {0:{cellWidth:12, halign:'center'}, 1:{cellWidth:68}, 4:{cellWidth:30, fontStyle:'bold'}};
-    r._lista = lista;
-    nombreArchivo = soloConf ? 'Confirmados' : 'Confirmaciones';
+    defs.push({h:'Confirmación', v:texto, w:30, bold:true, conf:true});
+    vacio = 'No hay personas con ese estado.'; nombreArchivo = soloConf ? 'Confirmados' : 'Confirmaciones';
   }
 
+  const filas = lista.length ? lista.map((p, i) => defs.map(c => c.v(p, i)))
+                             : [[{content:vacio, colSpan:defs.length, styles:{halign:'center', textColor:SUAVE}}]];
+  const estilosCol = {};
+  defs.forEach((c, i) => { const s = {}; if (c.w) s.cellWidth = c.w; if (c.al) s.halign = c.al; if (c.bold) s.fontStyle = 'bold'; if (Object.keys(s).length) estilosCol[i] = s; });
+  const idxConf = defs.findIndex(c => c.conf);
+
   doc.autoTable({
-    head: [cols], body: filas,
+    head: [defs.map(c => c.h)], body: filas,
     startY: 68, margin: {top: 21, left: M, right: M, bottom: 16},
     theme: 'grid', rowPageBreak: 'avoid',
-    styles: {font:'helvetica', fontSize:9.5, cellPadding:2.4, textColor:TINTA, lineColor:[211,219,225], lineWidth:0.15, valign:'middle'},
+    styles: {font:'helvetica', fontSize: conTipo ? 9 : 9.5, cellPadding:2.4, textColor:TINTA, lineColor:[211,219,225], lineWidth:0.15, valign:'middle'},
     headStyles: {fillColor:ASF, textColor:[255,255,255], fontStyle:'bold', lineColor:ASF},
     alternateRowStyles: {fillColor:[243,247,250]},
     columnStyles: estilosCol,
     didParseCell: data => {
-      if (conf && data.section === 'body' && data.column.index === 4 && r._lista && r._lista.length){
-        const e = estadoConfirmacion(r._lista[data.row.index]);
+      if (idxConf >= 0 && data.section === 'body' && data.column.index === idxConf && lista.length){
+        const e = estadoConfirmacion(lista[data.row.index]);
         data.cell.styles.textColor = e === 'conf' ? VERDE : e === 'proc' ? [166,106,0] : e === 'no' ? ROJO : SUAVE;
       }
     },
