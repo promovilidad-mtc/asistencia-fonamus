@@ -202,6 +202,8 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
       <h2>Asistencia en vivo</h2>
       <div class="acciones">
         <button class="sec" id="btnActualizar" type="button">Actualizar</button>
+        <button class="sec" id="btnPDFConf" type="button">PDF de confirmaciones</button>
+        <button class="sec" id="btnPDF" type="button">PDF de asistentes</button>
         <button class="sec" id="btnCSV" type="button">Descargar CSV</button>
       </div>
     </div>
@@ -252,8 +254,11 @@ const CONFIG = {
   EVENTO: 'III FONAMUS 2026',
   SUBTITULO: 'Control de asistencia',
   FECHA_LUGAR: '',              // Opcional. Ejemplo: '12 de noviembre, Lima'
-  API_URL: 'https://script.google.com/macros/s/AKfycby045t1qMK-xxdF2nN-25g7UGFlsWGKscm8SqSmC1oIpX5uAf8HmTtSPRW3lvd2q2NZ/exec',                  // Pega aquí la URL de la aplicación web de Apps Script. Vacío = modo demostración.
-  REFRESCO_LISTA_SEG: 20        // Cada cuántos segundos se actualiza la lista de asistencia.
+  API_URL: '',                  // Pega aquí la URL de la aplicación web de Apps Script. Vacío = modo demostración.
+  REFRESCO_LISTA_SEG: 20,       // Cada cuántos segundos se actualiza la lista de asistencia.
+  PDF_CONFIRMACION: false,      // true: el PDF agrega la columna "Estado de confirmación" (necesita la versión nueva de Code.gs).
+  PDF_HORA: false,              // true: el PDF de asistentes agrega la hora de llegada de cada persona.
+  PDF_CONF_SOLO_CONFIRMADOS: false  // true: el PDF de confirmaciones lista solo a quienes tienen "Confirmó" (el resumen siempre cuenta a todos).
 };
 
 /* ===================== UTILIDADES ===================== */
@@ -271,22 +276,22 @@ const mensajeError = r => r.error === 'red' ? MSG_RED : r.error === 'no_existe' 
 
 /* ===================== DATOS DE EJEMPLO (solo modo demo) ===================== */
 const DEMO = [
-  ['P001','Lucía Fernández Rojas','Municipalidad Provincial de Ejemplo','Alcaldesa',''],
-  ['P002','Carlos Mendoza Quispe','Universidad Nacional de Ejemplo','Docente investigador','2026-11-12 08:41:10'],
-  ['P003','Ana María Peña Salazar','Ministerio de Ejemplo','Directora general',''],
-  ['P004','Jorge Peña Huamán','Gobierno Regional de Ejemplo','Gerente de Infraestructura',''],
-  ['P005','Rosa Ñahui Condori','Municipalidad Distrital de Muestra','Regidora',''],
-  ['P006','Miguel Ángel Torres Vega','Colegio de Ingenieros (sede de ejemplo)','Decano',''],
-  ['P007','Daniela Quiroz Paredes','Embajada de Ejemplo','Segunda secretaria','2026-11-12 08:55:32'],
-  ['P008','Héctor Mendoza Lara','Cooperación de Ejemplo','Especialista en transporte',''],
-  ['P009','Sofía Castillo Rivera','Autoridad de Transporte de Ejemplo','Presidenta ejecutiva',''],
-  ['P010','Luis Alberto Vargas Cruz','Universidad Privada de Muestra','Vicerrector de Investigación',''],
-  ['P011','Patricia Núñez Alarcón','Organización civil de Ejemplo','Coordinadora',''],
-  ['P012','Raúl Gutiérrez Mamani','Municipalidad Provincial de Muestra','Gerente de Movilidad','']
+  ['P001','Lucía Fernández Rojas','Municipalidad Provincial de Ejemplo','Alcaldesa','','Confirmó'],
+  ['P002','Carlos Mendoza Quispe','Universidad Nacional de Ejemplo','Docente investigador','2026-11-12 08:41:10','Confirmó'],
+  ['P003','Ana María Peña Salazar','Ministerio de Ejemplo','Directora general','','En proceso'],
+  ['P004','Jorge Peña Huamán','Gobierno Regional de Ejemplo','Gerente de Infraestructura','','No Asistirá'],
+  ['P005','Rosa Ñahui Condori','Municipalidad Distrital de Muestra','Regidora','','Confirmó'],
+  ['P006','Miguel Ángel Torres Vega','Colegio de Ingenieros (sede de ejemplo)','Decano','','En proceso'],
+  ['P007','Daniela Quiroz Paredes','Embajada de Ejemplo','Segunda secretaria','2026-11-12 08:55:32','Confirmó'],
+  ['P008','Héctor Mendoza Lara','Cooperación de Ejemplo','Especialista en transporte','',''],
+  ['P009','Sofía Castillo Rivera','Autoridad de Transporte de Ejemplo','Presidenta ejecutiva','','Confirmó'],
+  ['P010','Luis Alberto Vargas Cruz','Universidad Privada de Muestra','Vicerrector de Investigación','','En proceso'],
+  ['P011','Patricia Núñez Alarcón','Organización civil de Ejemplo','Coordinadora','',''],
+  ['P012','Raúl Gutiérrez Mamani','Municipalidad Provincial de Muestra','Gerente de Movilidad','','Confirmó']
 ];
 let demoDB = null;
 let DEMO_LATENCIA = 250;
-function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora]) => ({id,nombre,entidad,cargo,presente:!!hora,hora})); }
+function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion]) => ({id,nombre,entidad,cargo,presente:!!hora,hora,confirmacion})); }
 async function demoApi(action, d, pin){
   if (!demoDB) demoInit();
   await sleep(DEMO_LATENCIA);
@@ -576,6 +581,166 @@ $('#formAgregar').addEventListener('submit', async e => {
   aviso('Persona agregada a la lista');
   if (l && l.ok) pintarLista(l);
 });
+/* ===================== PDF: ASISTENTES Y CONFIRMACIONES ===================== */
+const LIBS_PDF = [
+  {url:'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js', sri:'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk'},
+  {url:'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js', sri:'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3'}
+];
+const pdfListo = () => !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable);
+function cargarScript(l){
+  return new Promise((ok, fallo) => {
+    const s = document.createElement('script');
+    s.src = l.url; s.integrity = l.sri; s.crossOrigin = 'anonymous';
+    s.onload = ok; s.onerror = () => fallo(new Error('script'));
+    document.head.appendChild(s);
+  });
+}
+// Las librerías se bajan solo la primera vez que alguien pide un PDF.
+async function asegurarPDF(){
+  if (pdfListo()) return true;
+  try { for (const l of LIBS_PDF) await cargarScript(l); } catch (e) { return false; }
+  return pdfListo();
+}
+// Los PDF usan una letra estándar: se cambian los símbolos que no soporta por su equivalente más cercano.
+const latin = s => String(s ?? '').normalize('NFC')
+  .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/[\u2013\u2014]/g, '-')
+  .replace(/[^\u0000-\u00ff]/g, c => { const d = c.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); return /^[\u0000-\u00ff]+$/.test(d) ? d : '?'; });
+
+// Clasifica el "Estado de confirmación" del Sheet (ignora mayúsculas y tildes).
+function estadoConfirmacion(p){
+  const c = norm(p.confirmacion);
+  return c === 'confirmo' ? 'conf' : c === 'en proceso' ? 'proc' : c === 'no asistira' ? 'no' : c === '' ? 'sin' : 'otro';
+}
+
+async function pdfDesde(modo){
+  const out = await conCarga(async () => {
+    if (!(await asegurarPDF())) return {ok:false, error:'pdf'};
+    return api('panel');                       // lista al instante, para que el PDF salga con lo último
+  });
+  if (!out) return;
+  if (out.error === 'pdf'){ aviso('No se pudo preparar el PDF. Revisa el internet e inténtalo de nuevo.', null, true); return; }
+  if (pinInvalido(out)) return;
+  if (!out.ok){ aviso(mensajeError(out), null, true); return; }
+  pintarLista(out);
+  if (modo === 'confirmaciones' && out.lista.length && !('confirmacion' in out.lista[0])){
+    aviso('Falta actualizar el script (Code.gs) para leer la confirmación.', null, true); return;
+  }
+  try { construirPDF(out, modo); aviso('PDF generado. Revisa tus descargas.'); }
+  catch (e) { console.error(e); aviso('No se pudo crear el PDF. Inténtalo de nuevo.', null, true); }
+}
+$('#btnPDF').addEventListener('click', () => pdfDesde('asistentes'));
+$('#btnPDFConf').addEventListener('click', () => pdfDesde('confirmaciones'));
+
+function construirPDF(r, modo){
+  const conf = modo === 'confirmaciones';
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+  const ASF = [29,43,54], LIN = [242,183,5], TINTA = [22,34,44], SUAVE = [88,105,118];
+  const VERDE = [10,122,90], AMBAR = [214,150,0], ROJO = [179,57,47], GRIS = [196,205,212];
+  const total = r.total, d = new Date();
+  const fecha = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`, hora = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const TITULO = latin(CONFIG.EVENTO);
+  const soloConf = conf && CONFIG.PDF_CONF_SOLO_CONFIRMADOS;
+  const SUB = !conf ? 'Lista de participantes asistentes' : soloConf ? 'Lista de participantes confirmados' : 'Avance de confirmaciones';
+  const pie = `${TITULO} - ${SUB} - corte al ${fecha} ${hora}`;
+  const pc = x => (total ? Math.round(x * 100 / total) : 0) + ' %';
+
+  const lineaCarril = y => { doc.setDrawColor(...LIN); doc.setLineWidth(1.6); doc.setLineDash([7, 4], 0); doc.line(0, y, W, y); doc.setLineDash([]); };
+
+  // Cabecera de la primera página
+  doc.setFillColor(...ASF); doc.rect(0, 0, W, 30, 'F'); lineaCarril(31.2);
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(25); doc.text(TITULO, M, 14.5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(201, 212, 220); doc.text(SUB, M, 23);
+  doc.setFontSize(11); doc.setTextColor(255, 255, 255); doc.text(`Corte al ${fecha}, ${hora}`, W - M, 14.5, {align:'right'});
+  if (CONFIG.FECHA_LUGAR){ doc.setFontSize(10); doc.setTextColor(201, 212, 220); doc.text(latin(CONFIG.FECHA_LUGAR), W - M, 22, {align:'right'}); }
+
+  const numero = (x, num) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(...TINTA); doc.text(String(num), x, 49); };
+  const etiqueta = (x, txt, color) => {
+    let tx = x;
+    if (color){ doc.setFillColor(...color); doc.rect(x, 51.6, 3, 3, 'F'); tx = x + 4.6; }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...SUAVE); doc.text(txt, tx, 54.4);
+  };
+
+  let cols, filas, estilosCol, nombreArchivo;
+  if (!conf){
+    // ----- Asistentes (durante el evento) -----
+    const asist = r.lista.filter(p => p.presente), n = asist.length;
+    numero(M, n); etiqueta(M, 'Asistentes registrados');
+    numero(M + 62, total); etiqueta(M + 62, 'Personas en la lista');
+    numero(M + 124, pc(n)); etiqueta(M + 124, 'Avance de asistencia');
+    const pct = total ? Math.round(n * 100 / total) : 0;
+    doc.setFillColor(...ASF); doc.roundedRect(M, 59, W - 2 * M, 3.4, 1.7, 1.7, 'F');
+    if (pct > 0){ doc.setFillColor(...LIN); doc.roundedRect(M, 59, Math.max((W - 2 * M) * pct / 100, 3.4), 3.4, 1.7, 1.7, 'F'); }
+    const conConf = CONFIG.PDF_CONFIRMACION && r.lista.some(p => p.confirmacion);
+    cols = ['N°', 'Nombres y apellidos', 'Entidad', 'Cargo']; if (conConf) cols.push('Confirmación'); if (CONFIG.PDF_HORA) cols.push('Hora');
+    filas = n ? asist.map((p, i) => {
+      const f = [i + 1, latin(p.nombre), latin(p.entidad), latin(p.cargo)];
+      if (conConf) f.push(latin(p.confirmacion));
+      if (CONFIG.PDF_HORA) f.push(String(p.hora || '').length >= 16 ? p.hora.slice(11, 16) : '');
+      return f;
+    }) : [[{content:'Aún no hay asistentes registrados.', colSpan:cols.length, styles:{halign:'center', textColor:SUAVE}}]];
+    estilosCol = {0:{cellWidth:12, halign:'center'}, 1:{cellWidth:68}};
+    let k = 4; if (conConf){ estilosCol[k] = {cellWidth:28}; k++; } if (CONFIG.PDF_HORA) estilosCol[k] = {cellWidth:16, halign:'center'};
+    nombreArchivo = 'Asistentes';
+  } else {
+    // ----- Confirmaciones (antes del evento): sale de la columna "Estado de confirmación" -----
+    const cnt = {conf:0, proc:0, no:0, sin:0, otro:0};
+    r.lista.forEach(p => cnt[estadoConfirmacion(p)]++);
+    const sin = cnt.sin + cnt.otro;
+    const bloques = [
+      [M,       total,    'Invitados en la lista', null],
+      [M + 54,  cnt.conf, `Confirmaron (${pc(cnt.conf)})`, VERDE],
+      [M + 108, cnt.proc, `En proceso (${pc(cnt.proc)})`, AMBAR],
+      [M + 162, cnt.no,   `No asistirán (${pc(cnt.no)})`, ROJO],
+      [M + 216, sin,      `Sin estado (${pc(sin)})`, GRIS]
+    ];
+    bloques.forEach(([x, num, txt, color]) => { numero(x, num); etiqueta(x, txt, color); });
+    // Barra apilada: verde confirmados, ámbar en proceso, rojo no asistirán, gris sin estado
+    const ancho = W - 2 * M; let x = M;
+    doc.setFillColor(...GRIS); doc.rect(M, 59, ancho, 3.6, 'F');
+    [[cnt.conf, VERDE], [cnt.proc, AMBAR], [cnt.no, ROJO]].forEach(([c, col]) => {
+      if (!total || !c) return;
+      const w = ancho * c / total; doc.setFillColor(...col); doc.rect(x, 59, w, 3.6, 'F'); x += w;
+    });
+    cols = ['N°', 'Nombres y apellidos', 'Entidad', 'Cargo', 'Confirmación'];
+    const lista = soloConf ? r.lista.filter(p => estadoConfirmacion(p) === 'conf') : r.lista;
+    const texto = p => { const e = estadoConfirmacion(p); return e === 'conf' ? 'Confirmó' : e === 'proc' ? 'En proceso' : e === 'no' ? 'No asistirá' : e === 'sin' ? 'Sin estado' : latin(p.confirmacion); };
+    filas = lista.length ? lista.map((p, i) => [i + 1, latin(p.nombre), latin(p.entidad), latin(p.cargo), texto(p)])
+                         : [[{content:'No hay personas con ese estado.', colSpan:cols.length, styles:{halign:'center', textColor:SUAVE}}]];
+    estilosCol = {0:{cellWidth:12, halign:'center'}, 1:{cellWidth:68}, 4:{cellWidth:30, fontStyle:'bold'}};
+    r._lista = lista;
+    nombreArchivo = soloConf ? 'Confirmados' : 'Confirmaciones';
+  }
+
+  doc.autoTable({
+    head: [cols], body: filas,
+    startY: 68, margin: {top: 21, left: M, right: M, bottom: 16},
+    theme: 'grid', rowPageBreak: 'avoid',
+    styles: {font:'helvetica', fontSize:9.5, cellPadding:2.4, textColor:TINTA, lineColor:[211,219,225], lineWidth:0.15, valign:'middle'},
+    headStyles: {fillColor:ASF, textColor:[255,255,255], fontStyle:'bold', lineColor:ASF},
+    alternateRowStyles: {fillColor:[243,247,250]},
+    columnStyles: estilosCol,
+    didParseCell: data => {
+      if (conf && data.section === 'body' && data.column.index === 4 && r._lista && r._lista.length){
+        const e = estadoConfirmacion(r._lista[data.row.index]);
+        data.cell.styles.textColor = e === 'conf' ? VERDE : e === 'proc' ? [166,106,0] : e === 'no' ? ROJO : SUAVE;
+      }
+    },
+    didDrawPage: data => {
+      if (data.pageNumber > 1){
+        doc.setFillColor(...ASF); doc.rect(0, 0, W, 11, 'F'); lineaCarril(12.2);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255); doc.text(`${TITULO} - ${SUB}`, M, 7.4);
+      }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...SUAVE);
+      doc.text(pie, M, H - 7);
+      doc.text(`Página ${data.pageNumber} de {total_pages_count_string}`, W - M, H - 7, {align:'right'});
+    }
+  });
+  doc.putTotalPages('{total_pages_count_string}');
+  doc.save(`${nombreArchivo}-${TITULO.replace(/[^A-Za-z0-9]+/g, '-')}_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.pdf`);
+}
+
 $('#btnCSV').addEventListener('click', () => {
   const celda = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const filas = [['ID','Nombres y apellidos','Entidad','Cargo','Asistencia FONAMUS','Hora']].concat(
