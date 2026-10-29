@@ -119,6 +119,19 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
 .chk{display:flex;gap:10px;align-items:center;font-size:16px}
 .chk input{width:22px;height:22px}
 
+.seg-selects{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.seg-selects label{display:block;font-size:15px;font-weight:600;color:var(--suave)}
+.seg-selects select{display:block;width:100%;height:48px;margin-top:4px;border:2px solid #9fb0bc;border-radius:10px;padding:0 10px;font-size:16px;background:var(--papel);color:var(--tinta)}
+.chips-est button{display:inline-flex;align-items:center;gap:8px}
+.chips-est .pt{width:10px;height:10px;border-radius:2px;background:#9fb0bc}
+.chips-est .pt.conf{background:var(--ok)}.chips-est .pt.proc{background:#d69600}.chips-est .pt.no{background:var(--alerta)}.chips-est .pt.sin{background:#c4cdd4}
+.peq{font-size:14px!important}
+.est{display:inline-block;font-size:14px;font-weight:600;border-radius:999px;padding:4px 12px;white-space:nowrap}
+.est-conf{background:var(--ok-fondo);color:#064f3a}
+.est-proc{background:#fff0cc;color:#7a4d00}
+.est-no{background:var(--alerta-fondo);color:#7d251d}
+.est-sin{background:#e6ebef;color:var(--suave)}
+
 /* Aviso al marcar */
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0));transform:translateX(-50%);width:min(560px,calc(100% - 28px));background:var(--asfalto);color:#fff;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 24px rgba(0,0,0,.28);z-index:20;border-left:6px solid var(--ok)}
 .toast.error{border-left-color:#e5635a}
@@ -137,6 +150,7 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
 .carga__s{margin:0;color:var(--suave);font-size:18px}
 
 @media (max-width:520px){
+  .seg-selects{grid-template-columns:1fr}
   .persona{flex-direction:column;align-items:stretch}
   .persona__der{justify-content:space-between}
   .persona__der .principal{width:100%}
@@ -161,6 +175,7 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
     <nav class="nav" id="nav" hidden aria-label="Secciones">
       <button type="button" id="navBuscar">Registrar</button>
       <button type="button" id="navLista">Lista de asistencia</button>
+      <button type="button" id="navSeg">Confirmaciones</button>
       <button type="button" id="navSalir">Salir</button>
     </nav>
   </div>
@@ -196,16 +211,40 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
     <div class="resultados" id="resultados" aria-live="polite"></div>
   </section>
 
+  <!-- Seguimiento de confirmaciones -->
+  <section id="vSeg" hidden aria-labelledby="tSeg">
+    <div class="panel__top">
+      <h2 id="tSeg">Seguimiento de confirmaciones</h2>
+      <div class="acciones">
+        <button class="sec" id="btnSegAct" type="button">Actualizar</button>
+      </div>
+    </div>
+    <p class="aviso-seg error" id="segAviso" hidden></p>
+    <div class="filtros chips-est" id="segEstados" role="group" aria-label="Filtrar por estado de confirmación">
+      <button type="button" data-e="todos" aria-pressed="true">Todos <b></b></button>
+      <button type="button" data-e="conf" aria-pressed="false"><i class="pt conf"></i>Confirmó <b></b></button>
+      <button type="button" data-e="proc" aria-pressed="false"><i class="pt proc"></i>En proceso <b></b></button>
+      <button type="button" data-e="no" aria-pressed="false"><i class="pt no"></i>No asistirá <b></b></button>
+      <button type="button" data-e="sin" aria-pressed="false"><i class="pt sin"></i>Sin estado <b></b></button>
+    </div>
+    <input class="q-panel" id="segQ" type="search" placeholder="Buscar por nombre, entidad o cargo" autocomplete="off">
+    <div class="seg-selects">
+      <label>Tipo de actor<select id="segTipo"></select></label>
+      <label>Responsable de seguimiento<select id="segResp"></select></label>
+    </div>
+    <p class="ayuda" id="segCuenta"></p>
+    <div class="lista" id="segLista"></div>
+  </section>
+
   <!-- Lista de asistencia -->
   <section id="vLista" hidden>
     <div class="panel__top">
       <h2>Asistencia en vivo</h2>
       <div class="acciones">
         <button class="sec" id="btnActualizar" type="button">Actualizar</button>
-        <button class="sec" id="btnPDFRes" type="button">PDF de resumen</button>
-        <button class="sec" id="btnPDFConf" type="button">PDF de confirmaciones</button>
-        <button class="sec" id="btnPDF" type="button">PDF de asistentes</button>
-        <button class="sec" id="btnCSV" type="button">Descargar CSV</button>
+        <button class="sec" id="btnPDFRes" type="button">PDF de avance</button>
+        <button class="sec" id="btnPDFConf" type="button">Reporte vice</button>
+        <button class="sec" id="btnPDF" type="button">Reporte FONAMUS</button>
       </div>
     </div>
     <div class="resumen">
@@ -352,18 +391,19 @@ function pinInvalido(r){
 }
 
 /* ===================== VISTAS ===================== */
-const VISTAS = ['vPin','vBuscar','vLista'];
+const VISTAS = ['vPin','vBuscar','vLista','vSeg'];
 function mostrar(id){
   VISTAS.forEach(v => { $('#'+v).hidden = (v !== id); });
   $('#nav').hidden = !PIN;
-  [['#navBuscar','vBuscar'],['#navLista','vLista']].forEach(([s, v]) => {
+  [['#navBuscar','vBuscar'],['#navLista','vLista'],['#navSeg','vSeg']].forEach(([s, v]) => {
     if (id === v) $(s).setAttribute('aria-current', 'page'); else $(s).removeAttribute('aria-current');
   });
-  if (id === 'vLista') iniciarRefresco(); else detenerRefresco();
+  if (id === 'vLista' || id === 'vSeg') iniciarRefresco(); else detenerRefresco();
   window.scrollTo(0, 0);
 }
 $('#navBuscar').addEventListener('click', () => { mostrar('vBuscar'); $('#q').focus(); });
 $('#navLista').addEventListener('click', () => { mostrar('vLista'); recargar(); });
+$('#navSeg').addEventListener('click', () => { mostrar('vSeg'); pintarSeg(); recargar(); });
 $('#navSalir').addEventListener('click', () => salir(''));
 
 /* ===================== AVISO ===================== */
@@ -378,6 +418,78 @@ function aviso(texto, deshacer, esError){
   toastTimer = setTimeout(() => { $('#toast').hidden = true; toastAccion = null; }, deshacer ? 9000 : 4500);
 }
 $('#toastBtn').addEventListener('click', () => { const f = toastAccion; $('#toast').hidden = true; toastAccion = null; if (f) f(); });
+
+/* ===================== SEGUIMIENTO DE CONFIRMACIONES ===================== */
+const seg = {estado:'todos', tipo:'', resp:'', q:''};
+const TEXTO_EST = {conf:'Confirmó', proc:'En proceso', no:'No asistirá', sin:'Sin estado'};
+const claveEstado = p => { const e = estadoConfirmacion(p); return e === 'otro' ? 'sin' : e; };
+const tipoDe = p => { const t = String(p.tipo || '').trim(); return (t === '' || t === '-') ? 'Sin tipo' : t; };
+// Une "Álvaro" y "Alvaro" y deja la forma más usada.
+function nombresResp(lista){
+  const veces = {};
+  lista.forEach(p => { const s = String(p.respSeg || '').trim(); if (!s) return; const k = norm(s); (veces[k] = veces[k] || {})[s] = (veces[k][s] || 0) + 1; });
+  const canon = {};
+  Object.keys(veces).forEach(k => { canon[k] = Object.entries(veces[k]).sort((a, b) => b[1] - a[1] || ((b[0].normalize('NFD') !== b[0]) - (a[0].normalize('NFD') !== a[0])))[0][0]; });
+  return canon;
+}
+function filtrarSeg(lista, sinEstado){
+  const toks = norm(seg.q).split(' ').filter(Boolean);
+  return lista.filter(p =>
+    (sinEstado || seg.estado === 'todos' || claveEstado(p) === seg.estado) &&
+    (!seg.tipo || tipoDe(p) === seg.tipo) &&
+    (!seg.resp || (seg.resp === '__sin' ? !String(p.respSeg || '').trim() : norm(p.respSeg) === seg.resp)) &&
+    toks.every(t => norm(`${p.nombre} ${p.entidad} ${p.cargo}`).includes(t)));
+}
+function llenarSelect(sel, opciones, valor){
+  const firma = JSON.stringify(opciones);
+  if (sel.dataset.firma !== firma){
+    sel.innerHTML = opciones.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+    sel.dataset.firma = firma;
+  }
+  sel.value = opciones.some(([v]) => v === valor) ? valor : '';
+  return sel.value;
+}
+function pintarSeg(){
+  if ($('#vSeg').hidden) return;
+  const L = listaPanel;
+  const ok = !L.length || 'confirmacion' in L[0];
+  $('#segAviso').hidden = ok;
+  if (!ok) $('#segAviso').textContent = 'Falta actualizar el script (Code.gs) para ver los estados de confirmación.';
+  const tieneResp = L.length && 'respSeg' in L[0];
+  // Listas de tipo y responsable
+  const tipos = []; L.forEach(p => { const t = tipoDe(p); if (!tipos.includes(t)) tipos.push(t); });
+  if (tipos.includes('Sin tipo')) tipos.push(tipos.splice(tipos.indexOf('Sin tipo'), 1)[0]);
+  seg.tipo = llenarSelect($('#segTipo'), [['', 'Todos los tipos']].concat(tipos.map(t => [t, t])), seg.tipo);
+  const canon = nombresResp(L);
+  const resps = Object.keys(canon).sort((a, b) => canon[a].localeCompare(canon[b], 'es')).map(k => [k, canon[k]]);
+  seg.resp = llenarSelect($('#segResp'), [['', 'Todos']].concat(resps, [['__sin', 'Sin asignar']]), seg.resp);
+  $('#segResp').parentElement.hidden = !tieneResp;
+  // Conteos por estado (respetan los demás filtros)
+  const base = filtrarSeg(L, true), cuenta = {todos: base.length, conf:0, proc:0, no:0, sin:0};
+  base.forEach(p => cuenta[claveEstado(p)]++);
+  document.querySelectorAll('#segEstados button').forEach(b => {
+    b.querySelector('b').textContent = '(' + cuenta[b.dataset.e] + ')';
+    b.setAttribute('aria-pressed', String(b.dataset.e === seg.estado));
+  });
+  // Lista
+  const filas = filtrarSeg(L);
+  $('#segCuenta').textContent = `${filas.length} de ${L.length} personas`;
+  $('#segLista').innerHTML = filas.length ? filas.map(p => {
+    const k = claveEstado(p), e = estadoConfirmacion(p);
+    const txt = e === 'otro' ? p.confirmacion : TEXTO_EST[k];
+    const rs = String(p.respSeg || '').trim();
+    const linea3 = tipoDe(p) + (tieneResp ? ' - Seguimiento: ' + (rs ? (canon[norm(rs)] || rs) : 'sin asignar') : '');
+    return `<div class="item">
+      <div class="item__txt"><strong>${esc(p.nombre)}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span><span class="peq">${esc(linea3)}</span></div>
+      <div class="item__der"><span class="est est-${k}">${esc(txt)}</span></div>
+    </div>`;
+  }).join('') : '<div class="vacio">No hay personas con ese filtro.</div>';
+}
+document.querySelectorAll('#segEstados button').forEach(b => b.addEventListener('click', () => { seg.estado = b.dataset.e; pintarSeg(); }));
+$('#segQ').addEventListener('input', () => { seg.q = $('#segQ').value; pintarSeg(); });
+$('#segTipo').addEventListener('change', () => { seg.tipo = $('#segTipo').value; pintarSeg(); });
+$('#segResp').addEventListener('change', () => { seg.resp = $('#segResp').value; pintarSeg(); });
+$('#btnSegAct').addEventListener('click', () => recargar());
 
 /* ===================== PANTALLA DE ESPERA ===================== */
 let ocupado = false, cargaTimer = null, cargaLento = null;
@@ -523,7 +635,7 @@ let listaPanel = [], filtro = 'todos', refresco = null;
 function iniciarRefresco(){ detenerRefresco(); refresco = setInterval(cargarLista, CONFIG.REFRESCO_LISTA_SEG * 1000); }
 function detenerRefresco(){ clearInterval(refresco); refresco = null; }
 async function cargarLista(){
-  if (!PIN || $('#vLista').hidden) return;
+  if (!PIN || ($('#vLista').hidden && $('#vSeg').hidden)) return;
   const r = await api('panel');
   if (pinInvalido(r)) return;
   if (r.ok) pintarLista(r);
@@ -535,6 +647,7 @@ function pintarLista(r){
   $('#nFaltan').textContent = `Faltan ${tot - pres} (${pct}% ya llegó)`;
   const pr = $('#progreso'); pr.setAttribute('aria-valuenow', pct); pr.firstElementChild.style.width = pct + '%';
   pintarFilas();
+  pintarSeg();
 }
 function pintarFilas(){
   const toks = norm($('#qPanel').value).split(' ').filter(Boolean);
@@ -666,11 +779,14 @@ function construirPDF(r, modo){
   doc.setFontSize(11); doc.setTextColor(255, 255, 255); doc.text(`Corte al ${fecha}, ${hora}`, W - M, 14.5, {align:'right'});
   if (CONFIG.FECHA_LUGAR){ doc.setFontSize(10); doc.setTextColor(201, 212, 220); doc.text(latin(CONFIG.FECHA_LUGAR), W - M, 22, {align:'right'}); }
 
-  const numero = (x, num) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(...TINTA); doc.text(String(num), x, 49); };
+  // Medidas de los indicadores: el reporte de confirmaciones (para el vice) los lleva más grandes.
+  const dim = conf ? {num:34, etq:11.5, yNum:53, yEtq:60.5, ySq:57.2, sq:3.6, yBar:65.5, hBar:4.6, y0:76}
+                   : {num:22, etq:9.5,  yNum:49, yEtq:54.4, ySq:51.6, sq:3,   yBar:59,   hBar:3.6, y0:68};
+  const numero = (x, num) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(dim.num); doc.setTextColor(...TINTA); doc.text(String(num), x, dim.yNum); };
   const etiqueta = (x, txt, color) => {
     let tx = x;
-    if (color){ doc.setFillColor(...color); doc.rect(x, 51.6, 3, 3, 'F'); tx = x + 4.6; }
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...SUAVE); doc.text(txt, tx, 54.4);
+    if (color){ doc.setFillColor(...color); doc.rect(x, dim.ySq, dim.sq, dim.sq, 'F'); tx = x + dim.sq + 1.6; }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(dim.etq); doc.setTextColor(...SUAVE); doc.text(txt, tx, dim.yEtq);
   };
 
   // Conteo por estado de confirmación (columna "Estado de confirmación")
@@ -686,10 +802,10 @@ function construirPDF(r, modo){
     ].forEach(([x, num, txt, color]) => { numero(x, num); etiqueta(x, txt, color); });
     // Barra apilada: verde confirmados, ámbar en proceso, rojo no asistirán, gris sin estado
     const ancho = W - 2 * M; let x = M;
-    doc.setFillColor(...GRIS); doc.rect(M, 59, ancho, 3.6, 'F');
+    doc.setFillColor(...GRIS); doc.rect(M, dim.yBar, ancho, dim.hBar, 'F');
     [[cnt.conf, VERDE], [cnt.proc, AMBAR], [cnt.no, ROJO]].forEach(([c, col]) => {
       if (!total || !c) return;
-      const w = ancho * c / total; doc.setFillColor(...col); doc.rect(x, 59, w, 3.6, 'F'); x += w;
+      const w = ancho * c / total; doc.setFillColor(...col); doc.rect(x, dim.yBar, w, dim.hBar, 'F'); x += w;
     });
   };
 
@@ -850,6 +966,7 @@ function construirPDF(r, modo){
 
   doc.autoTable(Object.assign({}, baseTabla, {
     head: [defs.map(c => c.h)], body: filas,
+    startY: dim.y0,
     styles: estiloBase(conTipo ? 9 : 9.5, 2.4),
     columnStyles: estilosCol,
     didParseCell: data => {
@@ -863,15 +980,6 @@ function construirPDF(r, modo){
   doc.save(nombreSeguro(nombreArchivo));
 }
 
-$('#btnCSV').addEventListener('click', () => {
-  const celda = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const filas = [['ID','Nombres y apellidos','Entidad','Cargo','Asistencia FONAMUS','Hora']].concat(
-    listaPanel.map(p => [p.id, p.nombre, p.entidad, p.cargo, p.presente ? 'Asistió' : '', p.hora || '']));
-  const blob = new Blob(['\ufeff' + filas.map(f => f.map(celda).join(',')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'asistencia-fonamus.csv'; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-});
 $('#btnReiniciarDemo').addEventListener('click', () => { demoInit(); recargar(); });
 
 /* ===================== ARRANQUE ===================== */
