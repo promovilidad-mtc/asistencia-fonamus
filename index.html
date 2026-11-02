@@ -119,18 +119,80 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
 .chk{display:flex;gap:10px;align-items:center;font-size:16px}
 .chk input{width:22px;height:22px}
 
-.seg-selects{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.seg-selects label{display:block;font-size:15px;font-weight:600;color:var(--suave)}
-.seg-selects select{display:block;width:100%;height:48px;margin-top:4px;border:2px solid #9fb0bc;border-radius:10px;padding:0 10px;font-size:16px;background:var(--papel);color:var(--tinta)}
-.chips-est button{display:inline-flex;align-items:center;gap:8px}
-.chips-est .pt{width:10px;height:10px;border-radius:2px;background:#9fb0bc}
-.chips-est .pt.conf{background:var(--ok)}.chips-est .pt.proc{background:#d69600}.chips-est .pt.no{background:var(--alerta)}.chips-est .pt.sin{background:#c4cdd4}
-.peq{font-size:14px!important}
 .est{display:inline-block;font-size:14px;font-weight:600;border-radius:999px;padding:4px 12px;white-space:nowrap}
 .est-conf{background:var(--ok-fondo);color:#064f3a}
 .est-proc{background:#fff0cc;color:#7a4d00}
 .est-no{background:var(--alerta-fondo);color:#7d251d}
 .est-sin{background:#e6ebef;color:var(--suave)}
+
+/* ----- Seguimiento de confirmaciones: vista ancha para computador ----- */
+body.seg-ancho .banda__in,body.seg-ancho main{max-width:1320px}
+.solo-pc{display:none;background:#fff4cc;border:1px solid #e8cf7a;border-radius:10px;padding:16px;color:#4a3b00;margin-top:8px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:14px 0 10px}
+.kpi{position:relative;text-align:left;background:var(--papel);border:1px solid var(--borde);border-top:6px solid var(--c,#9fb0bc);border-radius:10px;padding:10px 14px 12px;cursor:pointer}
+.kpi b{display:block;font:700 46px/1 var(--titulo);color:var(--tinta)}
+.kpi span{display:block;font-size:16px;color:var(--suave)}
+.kpi small{position:absolute;right:12px;top:14px;font-size:14px;font-weight:600;color:var(--suave)}
+.kpi[aria-pressed="true"]{background:var(--asfalto);border-color:var(--asfalto);border-top-color:var(--c,#9fb0bc)}
+.kpi[aria-pressed="true"] b{color:#fff}
+.kpi[aria-pressed="true"] span,.kpi[aria-pressed="true"] small{color:#c9d4dc}
+.kpi-todos{--c:#1d2b36}.kpi-conf{--c:var(--ok)}.kpi-proc{--c:#d69600}.kpi-no{--c:var(--alerta)}.kpi-sin{--c:#c4cdd4}
+.seg-barra{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#c4cdd4;margin-bottom:16px}
+.seg-barra i{display:block;height:100%}
+.seg-barra .conf{background:var(--ok)}.seg-barra .proc{background:#d69600}.seg-barra .no{background:var(--alerta)}
+.seg-filtros{display:grid;grid-template-columns:1fr 240px 240px auto;gap:12px;align-items:end;margin-bottom:18px}
+.seg-filtros label{display:block;font-size:14px;font-weight:600;color:var(--suave)}
+.seg-filtros input,.seg-filtros select{display:block;width:100%;height:46px;margin-top:4px;border:2px solid #9fb0bc;border-radius:10px;padding:0 12px;font-size:16px;background:var(--papel);color:var(--tinta)}
+.seg-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start;margin-bottom:22px}
+.seg-col{display:grid;gap:16px}
+.tarjeta{background:var(--papel);border:1px solid var(--borde);border-radius:10px;padding:14px 16px}
+.tarjeta h3,.titulo-lista{font:700 22px/1.1 var(--titulo);margin:0 0 10px}
+.tarjeta .sub{margin:-4px 0 8px;font-size:13px;color:var(--suave)}
+table.dato{width:100%;border-collapse:collapse;font-size:14px}
+table.dato th{background:var(--asfalto);color:#fff;text-align:left;font-weight:600;padding:7px 8px}
+table.dato td{padding:6px 8px;border-bottom:1px solid var(--borde);vertical-align:middle}
+table.dato tbody tr:nth-child(even){background:#f3f7fa}
+table.dato .n{text-align:center;font-variant-numeric:tabular-nums}
+table.dato th.n{text-align:center}
+table.dato tr.total td{font-weight:700;background:#e2e8ed}
+table.dato tr[data-tipo],table.dato tr[data-resp]{cursor:pointer}
+table.dato tr[data-tipo]:hover td,table.dato tr[data-resp]:hover td{background:#fff6d6}
+table.dato tr.sel td{background:#fff0cc;font-weight:600}
+table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
+.av{white-space:nowrap}
+.av b{font-size:13px}
+.mb{display:inline-flex;width:110px;height:8px;border-radius:4px;overflow:hidden;background:#c4cdd4;vertical-align:middle;margin-right:8px}
+.mb span{display:block;height:100%}
+.mb .conf{background:var(--ok)}.mb .proc{background:#d69600}.mb .no{background:var(--alerta)}.mb .sin{background:#c4cdd4}
+.tabla-lista{background:var(--papel);border:1px solid var(--borde);border-radius:10px;max-height:70vh;overflow:auto}
+.tabla-lista table.dato th{position:sticky;top:0;z-index:1}
+.solo-impresion{display:none}
+.vacio-t{padding:12px 4px;color:var(--suave)}
+@media (max-width:900px){ #navSeg{display:none} #segContenido{display:none} .solo-pc{display:block} }
+@media print{
+  @page{size:A4 landscape;margin:9mm}
+  body.seg-ancho{background:#fff;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.seg-ancho .banda,body.seg-ancho .nav,body.seg-ancho .acciones,body.seg-ancho .seg-filtros,body.seg-ancho .demo,body.seg-ancho .toast,body.seg-ancho .carga,body.seg-ancho #segAviso,body.seg-ancho .tarjeta .sub{display:none!important}
+  body.seg-ancho main{max-width:none;padding:0}
+  body.seg-ancho .panel__top{margin-bottom:2px}
+  body.seg-ancho .panel__top h2{font-size:24px}
+  body.seg-ancho .solo-impresion{display:block;margin:0 0 4px;font-size:11px}
+  body.seg-ancho .kpis{margin:6px 0 6px;gap:8px}
+  body.seg-ancho .kpi{padding:6px 10px 8px;break-inside:avoid}
+  body.seg-ancho .kpi b{font-size:26px}
+  body.seg-ancho .kpi span{font-size:12px}
+  body.seg-ancho .seg-barra{margin-bottom:8px}
+  body.seg-ancho .seg-grid,body.seg-ancho .seg-col{display:block}
+  body.seg-ancho .tarjeta{break-inside:auto;margin-bottom:8px;padding:8px 10px}
+  body.seg-ancho .tarjeta h3,body.seg-ancho .titulo-lista{font-size:16px;margin-bottom:4px}
+  body.seg-ancho .titulo-lista{break-after:avoid}
+  body.seg-ancho .tabla-lista{max-height:none;overflow:visible}
+  body.seg-ancho table.dato{font-size:9.5px}
+  body.seg-ancho table.dato th,body.seg-ancho table.dato td{padding:3px 6px}
+  body.seg-ancho table.dato thead{display:table-header-group}
+  body.seg-ancho tr{break-inside:avoid}
+  body.seg-ancho .mb{width:70px}
+}
 
 /* Aviso al marcar */
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0));transform:translateX(-50%);width:min(560px,calc(100% - 28px));background:var(--asfalto);color:#fff;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 24px rgba(0,0,0,.28);z-index:20;border-left:6px solid var(--ok)}
@@ -150,7 +212,6 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
 .carga__s{margin:0;color:var(--suave);font-size:18px}
 
 @media (max-width:520px){
-  .seg-selects{grid-template-columns:1fr}
   .persona{flex-direction:column;align-items:stretch}
   .persona__der{justify-content:space-between}
   .persona__der .principal{width:100%}
@@ -213,27 +274,52 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
 
   <!-- Seguimiento de confirmaciones -->
   <section id="vSeg" hidden aria-labelledby="tSeg">
-    <div class="panel__top">
-      <h2 id="tSeg">Seguimiento de confirmaciones</h2>
-      <div class="acciones">
-        <button class="sec" id="btnSegAct" type="button">Actualizar</button>
+    <div class="solo-pc" id="segSoloPC">Esta pestaña de seguimiento está pensada para computador. Ábrela en una pantalla más grande.</div>
+    <div id="segContenido">
+      <div class="panel__top">
+        <h2 id="tSeg">Seguimiento de confirmaciones</h2>
+        <div class="acciones">
+          <button class="sec" id="btnSegAct" type="button">Actualizar</button>
+          <button class="sec" id="btnSegImprimir" type="button">Imprimir esta vista</button>
+        </div>
       </div>
+      <p class="aviso-seg error" id="segAviso" hidden></p>
+      <p class="solo-impresion" id="segFiltroTexto"></p>
+      <div class="kpis" id="segEstados" role="group" aria-label="Filtrar por estado de confirmación">
+        <button type="button" class="kpi kpi-todos" data-e="todos" aria-pressed="true"><b>0</b><span>Invitados</span><small></small></button>
+        <button type="button" class="kpi kpi-conf" data-e="conf" aria-pressed="false"><b>0</b><span>Confirmaron</span><small></small></button>
+        <button type="button" class="kpi kpi-proc" data-e="proc" aria-pressed="false"><b>0</b><span>En proceso</span><small></small></button>
+        <button type="button" class="kpi kpi-no" data-e="no" aria-pressed="false"><b>0</b><span>No asistirán</span><small></small></button>
+        <button type="button" class="kpi kpi-sin" data-e="sin" aria-pressed="false"><b>0</b><span>Sin estado</span><small></small></button>
+      </div>
+      <div class="seg-barra" id="segBarra" aria-hidden="true"><i class="conf"></i><i class="proc"></i><i class="no"></i></div>
+      <div class="seg-filtros">
+        <label>Buscar por nombre, entidad, cargo o ciudad<input id="segQ" type="search" autocomplete="off" placeholder="Por ejemplo: alcalde, Cusco, embajada"></label>
+        <label>Tipo de actor<select id="segTipo"></select></label>
+        <label>Responsable de seguimiento<select id="segResp"></select></label>
+        <button class="sec" id="btnSegLimpiar" type="button">Limpiar filtros</button>
+      </div>
+      <div class="seg-grid">
+        <div class="tarjeta" id="cTipo">
+          <h3>Por tipo de actor</h3>
+          <p class="sub">Toca un tipo para filtrar la lista de abajo.</p>
+          <table class="dato" id="tTipo"></table>
+        </div>
+        <div class="seg-col">
+          <div class="tarjeta" id="cMuni">
+            <h3>Municipalidades por cargo</h3>
+            <table class="dato" id="tMuni"></table>
+          </div>
+          <div class="tarjeta" id="cResp">
+            <h3>Responsables de oficio y de seguimiento</h3>
+            <p class="sub">Toca un responsable para ver su seguimiento.</p>
+            <table class="dato" id="tResp"></table>
+          </div>
+        </div>
+      </div>
+      <h3 class="titulo-lista">Lista de invitados <span id="segCuenta"></span></h3>
+      <div class="tabla-lista"><table class="dato" id="tLista"></table></div>
     </div>
-    <p class="aviso-seg error" id="segAviso" hidden></p>
-    <div class="filtros chips-est" id="segEstados" role="group" aria-label="Filtrar por estado de confirmación">
-      <button type="button" data-e="todos" aria-pressed="true">Todos <b></b></button>
-      <button type="button" data-e="conf" aria-pressed="false"><i class="pt conf"></i>Confirmó <b></b></button>
-      <button type="button" data-e="proc" aria-pressed="false"><i class="pt proc"></i>En proceso <b></b></button>
-      <button type="button" data-e="no" aria-pressed="false"><i class="pt no"></i>No asistirá <b></b></button>
-      <button type="button" data-e="sin" aria-pressed="false"><i class="pt sin"></i>Sin estado <b></b></button>
-    </div>
-    <input class="q-panel" id="segQ" type="search" placeholder="Buscar por nombre, entidad o cargo" autocomplete="off">
-    <div class="seg-selects">
-      <label>Tipo de actor<select id="segTipo"></select></label>
-      <label>Responsable de seguimiento<select id="segResp"></select></label>
-    </div>
-    <p class="ayuda" id="segCuenta"></p>
-    <div class="lista" id="segLista"></div>
   </section>
 
   <!-- Lista de asistencia -->
@@ -395,6 +481,7 @@ const VISTAS = ['vPin','vBuscar','vLista','vSeg'];
 function mostrar(id){
   VISTAS.forEach(v => { $('#'+v).hidden = (v !== id); });
   $('#nav').hidden = !PIN;
+  document.body.classList.toggle('seg-ancho', id === 'vSeg');
   [['#navBuscar','vBuscar'],['#navLista','vLista'],['#navSeg','vSeg']].forEach(([s, v]) => {
     if (id === v) $(s).setAttribute('aria-current', 'page'); else $(s).removeAttribute('aria-current');
   });
@@ -419,26 +506,28 @@ function aviso(texto, deshacer, esError){
 }
 $('#toastBtn').addEventListener('click', () => { const f = toastAccion; $('#toast').hidden = true; toastAccion = null; if (f) f(); });
 
-/* ===================== SEGUIMIENTO DE CONFIRMACIONES ===================== */
+/* ===================== SEGUIMIENTO DE CONFIRMACIONES (vista para computador) ===================== */
 const seg = {estado:'todos', tipo:'', resp:'', q:''};
 const TEXTO_EST = {conf:'Confirmó', proc:'En proceso', no:'No asistirá', sin:'Sin estado'};
 const claveEstado = p => { const e = estadoConfirmacion(p); return e === 'otro' ? 'sin' : e; };
 const tipoDe = p => { const t = String(p.tipo || '').trim(); return (t === '' || t === '-') ? 'Sin tipo' : t; };
-// Une "Álvaro" y "Alvaro" y deja la forma más usada.
-function nombresResp(lista){
+const pctDe = (a, b) => b ? Math.round(a * 100 / b) : 0;
+// Une responsables de oficio y de seguimiento, y "Álvaro" con "Alvaro" (deja la forma más usada).
+function canonResp(lista){
   const veces = {};
-  lista.forEach(p => { const s = String(p.respSeg || '').trim(); if (!s) return; const k = norm(s); (veces[k] = veces[k] || {})[s] = (veces[k][s] || 0) + 1; });
+  lista.forEach(p => [p.respOficio, p.respSeg].forEach(s => { s = String(s || '').trim(); if (!s) return; const k = norm(s); (veces[k] = veces[k] || {})[s] = (veces[k][s] || 0) + 1; }));
   const canon = {};
   Object.keys(veces).forEach(k => { canon[k] = Object.entries(veces[k]).sort((a, b) => b[1] - a[1] || ((b[0].normalize('NFD') !== b[0]) - (a[0].normalize('NFD') !== a[0])))[0][0]; });
   return canon;
 }
-function filtrarSeg(lista, sinEstado){
+// `omitir` deja fuera algún filtro: así cada cuadro puede mostrar todas sus opciones y aun así respetar los demás filtros.
+function filtrarSeg(lista, omitir = []){
   const toks = norm(seg.q).split(' ').filter(Boolean);
   return lista.filter(p =>
-    (sinEstado || seg.estado === 'todos' || claveEstado(p) === seg.estado) &&
-    (!seg.tipo || tipoDe(p) === seg.tipo) &&
-    (!seg.resp || (seg.resp === '__sin' ? !String(p.respSeg || '').trim() : norm(p.respSeg) === seg.resp)) &&
-    toks.every(t => norm(`${p.nombre} ${p.entidad} ${p.cargo}`).includes(t)));
+    (omitir.includes('estado') || seg.estado === 'todos' || claveEstado(p) === seg.estado) &&
+    (omitir.includes('tipo') || !seg.tipo || tipoDe(p) === seg.tipo) &&
+    (omitir.includes('resp') || !seg.resp || (seg.resp === '__sin' ? !String(p.respSeg || '').trim() : norm(p.respSeg) === seg.resp)) &&
+    toks.every(t => norm(`${p.nombre} ${p.entidad} ${p.cargo} ${p.ciudad || ''}`).includes(t)));
 }
 function llenarSelect(sel, opciones, valor){
   const firma = JSON.stringify(opciones);
@@ -449,47 +538,120 @@ function llenarSelect(sel, opciones, valor){
   sel.value = opciones.some(([v]) => v === valor) ? valor : '';
   return sel.value;
 }
+const vacioE = () => ({n:0, conf:0, proc:0, no:0, sin:0});
+const celdasE = o => `<td class="n">${o.n}</td><td class="n">${o.conf}</td><td class="n">${o.proc}</td><td class="n">${o.no}</td><td class="n">${o.sin}</td>`;
+const barraMini = o => `<div class="mb">${[['conf', o.conf], ['proc', o.proc], ['no', o.no], ['sin', o.sin]].map(([k, c]) => c ? `<span class="${k}" style="width:${c * 100 / o.n}%"></span>` : '').join('')}</div>`;
+const sumaE = arr => arr.reduce((a, o) => ({n:a.n+o.n, conf:a.conf+o.conf, proc:a.proc+o.proc, no:a.no+o.no, sin:a.sin+o.sin}), vacioE());
+const encE = primera => `<thead><tr><th>${primera}</th><th class="n">Invitados</th><th class="n">Confirmó</th><th class="n">En proceso</th><th class="n">No asistirá</th><th class="n">Sin estado</th>`;
+const CAT_CARGO = c => { const t = norm(c); return t.includes('subgerente') ? 'Subgerente' : t.includes('gerente') ? 'Gerente' : t.includes('alcalde') ? 'Alcalde/sa' : t.includes('funcionario') ? 'Funcionario' : 'Otros'; };
+
 function pintarSeg(){
   if ($('#vSeg').hidden) return;
   const L = listaPanel;
   const ok = !L.length || 'confirmacion' in L[0];
   $('#segAviso').hidden = ok;
   if (!ok) $('#segAviso').textContent = 'Falta actualizar el script (Code.gs) para ver los estados de confirmación.';
-  const tieneResp = L.length && 'respSeg' in L[0];
-  // Listas de tipo y responsable
-  const tipos = []; L.forEach(p => { const t = tipoDe(p); if (!tipos.includes(t)) tipos.push(t); });
-  if (tipos.includes('Sin tipo')) tipos.push(tipos.splice(tipos.indexOf('Sin tipo'), 1)[0]);
-  seg.tipo = llenarSelect($('#segTipo'), [['', 'Todos los tipos']].concat(tipos.map(t => [t, t])), seg.tipo);
-  const canon = nombresResp(L);
+  const tieneResp = L.length > 0 && 'respSeg' in L[0], tieneCiudad = L.length > 0 && 'ciudad' in L[0];
+  const canon = canonResp(L);
+
+  // Listas desplegables
+  const orden = []; L.forEach(p => { const t = tipoDe(p); if (!orden.includes(t)) orden.push(t); });
+  if (orden.includes('Sin tipo')) orden.push(orden.splice(orden.indexOf('Sin tipo'), 1)[0]);
+  seg.tipo = llenarSelect($('#segTipo'), [['', 'Todos los tipos']].concat(orden.map(t => [t, t])), seg.tipo);
   const resps = Object.keys(canon).sort((a, b) => canon[a].localeCompare(canon[b], 'es')).map(k => [k, canon[k]]);
   seg.resp = llenarSelect($('#segResp'), [['', 'Todos']].concat(resps, [['__sin', 'Sin asignar']]), seg.resp);
   $('#segResp').parentElement.hidden = !tieneResp;
-  // Conteos por estado (respetan los demás filtros)
-  const base = filtrarSeg(L, true), cuenta = {todos: base.length, conf:0, proc:0, no:0, sin:0};
-  base.forEach(p => cuenta[claveEstado(p)]++);
-  document.querySelectorAll('#segEstados button').forEach(b => {
-    b.querySelector('b').textContent = '(' + cuenta[b.dataset.e] + ')';
-    b.setAttribute('aria-pressed', String(b.dataset.e === seg.estado));
+
+  // Indicadores: se ajustan a los filtros (menos el de estado, que es el que se elige aquí)
+  const base = filtrarSeg(L, ['estado']);
+  const c = {todos: base.length, conf:0, proc:0, no:0, sin:0}; base.forEach(p => c[claveEstado(p)]++);
+  document.querySelectorAll('#segEstados .kpi').forEach(b => {
+    const e = b.dataset.e;
+    b.querySelector('b').textContent = c[e];
+    b.querySelector('small').textContent = e === 'todos' ? '' : pctDe(c[e], c.todos) + ' %';
+    b.setAttribute('aria-pressed', String(e === seg.estado));
   });
-  // Lista
+  const barra = $('#segBarra').children;
+  ['conf', 'proc', 'no'].forEach((k, i) => { barra[i].style.width = (c.todos ? c[k] * 100 / c.todos : 0) + '%'; });
+
+  // Por tipo de actor
+  const bT = filtrarSeg(L, ['estado', 'tipo']), gT = {};
+  bT.forEach(p => { const t = tipoDe(p); const o = gT[t] = gT[t] || vacioE(); o.n++; o[claveEstado(p)]++; });
+  const filasT = orden.filter(t => gT[t]);
+  $('#tTipo').innerHTML = filasT.length
+    ? encE('Tipo de actor') + '<th>Avance (% que confirmó)</th></tr></thead><tbody>' +
+      filasT.map(t => `<tr data-tipo="${esc(t)}" tabindex="0" class="${seg.tipo === t ? 'sel' : ''}"><td>${esc(t)}</td>${celdasE(gT[t])}<td class="av">${barraMini(gT[t])}<b>${pctDe(gT[t].conf, gT[t].n)} %</b></td></tr>`).join('') +
+      (() => { const T = sumaE(filasT.map(t => gT[t])); return `<tr class="total"><td>Total</td>${celdasE(T)}<td class="av">${barraMini(T)}<b>${pctDe(T.conf, T.n)} %</b></td></tr>`; })() + '</tbody>'
+    : '<tbody><tr><td class="vacio-t">No hay datos con estos filtros.</td></tr></tbody>';
+
+  // Municipalidades por cargo (solo si el filtro de tipo es "todos" o "Municipalidad")
+  const verMuni = !seg.tipo || seg.tipo === 'Municipalidad';
+  $('#cMuni').hidden = !verMuni;
+  if (verMuni){
+    const bM = filtrarSeg(L, ['estado', 'tipo']).filter(p => norm(p.tipo) === 'municipalidad'), cat = {};
+    ['Alcalde/sa', 'Gerente', 'Subgerente', 'Funcionario', 'Otros'].forEach(k => cat[k] = vacioE());
+    bM.forEach(p => { const o = cat[CAT_CARGO(p.cargo)]; o.n++; o[claveEstado(p)]++; });
+    const ks = Object.keys(cat).filter(k => cat[k].n);
+    $('#tMuni').innerHTML = ks.length
+      ? encE('Cargo') + '</tr></thead><tbody>' + ks.map(k => `<tr><td>${esc(k)}</td>${celdasE(cat[k])}</tr>`).join('') + `<tr class="total"><td>Total</td>${celdasE(sumaE(ks.map(k => cat[k])))}</tr></tbody>`
+      : '<tbody><tr><td class="vacio-t">No hay municipalidades con estos filtros.</td></tr></tbody>';
+  }
+
+  // Responsables
+  $('#cResp').hidden = !tieneResp;
+  if (tieneResp){
+    const bR = filtrarSeg(L, ['estado', 'resp']), R = {};
+    Object.keys(canon).forEach(k => R[k] = {k, t:canon[k], asig:0, env:0, seg:0, conf:0});
+    const sinR = {k:'__sin', t:'Sin asignar', asig:0, env:null, seg:0, conf:0};
+    bR.forEach(p => {
+      const ko = norm(p.respOficio), ks = norm(p.respSeg), e = claveEstado(p);
+      if (ko){ R[ko].asig++; if (norm(p.gestion) === 'enviado') R[ko].env++; } else sinR.asig++;
+      if (ks){ R[ks].seg++; if (e === 'conf') R[ks].conf++; } else { sinR.seg++; if (e === 'conf') sinR.conf++; }
+    });
+    const fr = Object.values(R).filter(o => o.asig || o.seg || seg.resp === o.k).sort((a, b) => b.asig - a.asig || a.t.localeCompare(b.t, 'es'));
+    if (sinR.asig || sinR.seg) fr.push(sinR);
+    const tr = fr.reduce((a, o) => ({asig:a.asig+o.asig, env:a.env+(o.env || 0), seg:a.seg+o.seg, conf:a.conf+o.conf}), {asig:0, env:0, seg:0, conf:0});
+    $('#tResp').innerHTML = fr.length
+      ? '<thead><tr><th>Responsable</th><th class="n">Oficios asignados</th><th class="n">Oficios enviados</th><th class="n">Seguimiento asignado</th><th class="n">Confirmaron</th></tr></thead><tbody>' +
+        fr.map(o => `<tr data-resp="${esc(o.k)}" tabindex="0" class="${seg.resp === o.k ? 'sel' : ''}"><td>${esc(o.t)}</td><td class="n">${o.asig}</td><td class="n">${o.env === null ? '-' : o.env}</td><td class="n">${o.seg}</td><td class="n">${o.conf}</td></tr>`).join('') +
+        `<tr class="total"><td>Total</td><td class="n">${tr.asig}</td><td class="n">${tr.env}</td><td class="n">${tr.seg}</td><td class="n">${tr.conf}</td></tr></tbody>`
+      : '<tbody><tr><td class="vacio-t">No hay datos con estos filtros.</td></tr></tbody>';
+  }
+
+  // Lista de invitados
   const filas = filtrarSeg(L);
-  $('#segCuenta').textContent = `${filas.length} de ${L.length} personas`;
-  $('#segLista').innerHTML = filas.length ? filas.map(p => {
-    const k = claveEstado(p), e = estadoConfirmacion(p);
-    const txt = e === 'otro' ? p.confirmacion : TEXTO_EST[k];
-    const rs = String(p.respSeg || '').trim();
-    const linea3 = tipoDe(p) + (tieneResp ? ' - Seguimiento: ' + (rs ? (canon[norm(rs)] || rs) : 'sin asignar') : '');
-    return `<div class="item">
-      <div class="item__txt"><strong>${esc(p.nombre)}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span><span class="peq">${esc(linea3)}</span></div>
-      <div class="item__der"><span class="est est-${k}">${esc(txt)}</span></div>
-    </div>`;
-  }).join('') : '<div class="vacio">No hay personas con ese filtro.</div>';
+  $('#segCuenta').textContent = `(${filas.length} de ${L.length} personas)`;
+  $('#tLista').innerHTML = filas.length
+    ? `<thead><tr><th class="n">N°</th><th>Tipo de actor</th><th>Nombres y apellidos</th><th>Entidad</th>${tieneCiudad ? '<th>Ciudad / país</th>' : ''}<th>Cargo</th><th>Estado</th>${tieneResp ? '<th>Seguimiento</th>' : ''}</tr></thead><tbody>` +
+      filas.map((p, i) => {
+        const k = claveEstado(p), e = estadoConfirmacion(p), rs = String(p.respSeg || '').trim();
+        return `<tr><td class="n">${i + 1}</td><td>${esc(tipoDe(p))}</td><td><b>${esc(p.nombre)}</b></td><td>${esc(p.entidad)}</td>${tieneCiudad ? `<td>${esc(p.ciudad || '-')}</td>` : ''}<td>${esc(p.cargo)}</td><td><span class="est est-${k}">${esc(e === 'otro' ? p.confirmacion : TEXTO_EST[k])}</span></td>${tieneResp ? `<td>${esc(rs ? (canon[norm(rs)] || rs) : '-')}</td>` : ''}</tr>`;
+      }).join('') + '</tbody>'
+    : '<tbody><tr><td class="vacio-t">No hay personas con ese filtro.</td></tr></tbody>';
+
+  // Texto de los filtros (solo se ve al imprimir)
+  const partes = [];
+  if (seg.estado !== 'todos') partes.push('Estado: ' + TEXTO_EST[seg.estado]);
+  if (seg.tipo) partes.push('Tipo de actor: ' + seg.tipo);
+  if (seg.resp) partes.push('Seguimiento: ' + (seg.resp === '__sin' ? 'sin asignar' : (canon[seg.resp] || seg.resp)));
+  if (seg.q.trim()) partes.push('Búsqueda: "' + seg.q.trim() + '"');
+  const d = new Date();
+  $('#segFiltroTexto').textContent = `${CONFIG.EVENTO} | Corte al ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())} | Filtros: ${partes.join(' | ') || 'sin filtros (todos los invitados)'}`;
 }
-document.querySelectorAll('#segEstados button').forEach(b => b.addEventListener('click', () => { seg.estado = b.dataset.e; pintarSeg(); }));
+document.querySelectorAll('#segEstados .kpi').forEach(b => b.addEventListener('click', () => { seg.estado = (seg.estado === b.dataset.e && b.dataset.e !== 'todos') ? 'todos' : b.dataset.e; pintarSeg(); }));
 $('#segQ').addEventListener('input', () => { seg.q = $('#segQ').value; pintarSeg(); });
 $('#segTipo').addEventListener('change', () => { seg.tipo = $('#segTipo').value; pintarSeg(); });
 $('#segResp').addEventListener('change', () => { seg.resp = $('#segResp').value; pintarSeg(); });
+$('#btnSegLimpiar').addEventListener('click', () => { seg.estado = 'todos'; seg.tipo = ''; seg.resp = ''; seg.q = ''; $('#segQ').value = ''; pintarSeg(); });
 $('#btnSegAct').addEventListener('click', () => recargar());
+$('#btnSegImprimir').addEventListener('click', () => window.print());
+const alternar = (campo, atributo) => e => {
+  const tr = e.target.closest(`tr[${atributo}]`); if (!tr) return;
+  const v = tr.getAttribute(atributo); seg[campo] = seg[campo] === v ? '' : v; pintarSeg();
+};
+$('#tTipo').addEventListener('click', alternar('tipo', 'data-tipo'));
+$('#tResp').addEventListener('click', alternar('resp', 'data-resp'));
+['#tTipo', '#tResp'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('tr[tabindex]')) e.target.click(); }));
 
 /* ===================== PANTALLA DE ESPERA ===================== */
 let ocupado = false, cargaTimer = null, cargaLento = null;
