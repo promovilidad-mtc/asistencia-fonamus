@@ -243,7 +243,8 @@ details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-rad
       <div class="acciones">
         <button class="sec" id="btnActualizar" type="button">Actualizar</button>
         <button class="sec" id="btnPDFRes" type="button">PDF de avance</button>
-        <button class="sec" id="btnPDFConf" type="button">Reporte vice</button>
+        <button class="sec" id="btnPDFConf" type="button">Reporte general</button>
+        <button class="sec" id="btnPDFVice" type="button">Reporte vice</button>
         <button class="sec" id="btnPDF" type="button">Reporte FONAMUS</button>
       </div>
     </div>
@@ -301,7 +302,6 @@ const CONFIG = {
   PDF_RESUMEN_RESPONSABLES: true, // true: el PDF de resumen agrega la tabla de responsables (página 2). Es de uso interno.
   PDF_CONFIRMACION: false,      // true: el PDF agrega la columna "Estado de confirmación" (necesita la versión nueva de Code.gs).
   PDF_HORA: false,              // true: el PDF de asistentes agrega la hora de llegada de cada persona.
-  PDF_CONF_SOLO_CONFIRMADOS: false  // true: el PDF de confirmaciones lista solo a quienes tienen "Confirmó" (el resumen siempre cuenta a todos).
 };
 
 /* ===================== UTILIDADES ===================== */
@@ -739,7 +739,7 @@ async function pdfDesde(modo){
   if (pinInvalido(out)) return;
   if (!out.ok){ aviso(mensajeError(out), null, true); return; }
   pintarLista(out);
-  if ((modo === 'confirmaciones' || modo === 'resumen') && out.lista.length && !('confirmacion' in out.lista[0])){
+  if ((modo === 'confirmaciones' || modo === 'resumen' || modo === 'vice') && out.lista.length && !('confirmacion' in out.lista[0])){
     aviso('Falta actualizar el script (Code.gs) para leer la confirmación.', null, true); return;
   }
   if (modo === 'resumen' && out.lista.length && !('tipo' in out.lista[0])){
@@ -747,15 +747,17 @@ async function pdfDesde(modo){
   }
   const faltaResp = modo === 'resumen' && CONFIG.PDF_RESUMEN_RESPONSABLES && out.lista.length && !('respOficio' in out.lista[0]);
   const faltaTipo = CONFIG.PDF_TIPO_ACTOR && out.lista.length && !('tipo' in out.lista[0]);
-  try { construirPDF(out, modo); aviso(faltaTipo ? 'PDF generado sin Tipo de actor: falta actualizar el script (Code.gs).' : faltaResp ? 'PDF generado sin la tabla de responsables: falta actualizar el script (Code.gs).' : 'PDF generado. Revisa tus descargas.'); }
+  const faltaCiudad = (modo === 'confirmaciones' || modo === 'vice') && out.lista.length && !('ciudad' in out.lista[0]);
+  try { construirPDF(out, modo); aviso(faltaCiudad ? 'PDF generado con Entidad en lugar de Ciudad / país: falta actualizar el script (Code.gs).' : faltaTipo ? 'PDF generado sin Tipo de actor: falta actualizar el script (Code.gs).' : faltaResp ? 'PDF generado sin la tabla de responsables: falta actualizar el script (Code.gs).' : 'PDF generado. Revisa tus descargas.'); }
   catch (e) { console.error(e); aviso('No se pudo crear el PDF. Inténtalo de nuevo.', null, true); }
 }
 $('#btnPDF').addEventListener('click', () => pdfDesde('asistentes'));
 $('#btnPDFConf').addEventListener('click', () => pdfDesde('confirmaciones'));
+$('#btnPDFVice').addEventListener('click', () => pdfDesde('vice'));
 $('#btnPDFRes').addEventListener('click', () => pdfDesde('resumen'));
 
 function construirPDF(r, modo){
-  const asis = modo === 'asistentes', resu = modo === 'resumen', conf = modo === 'confirmaciones';
+  const asis = modo === 'asistentes', resu = modo === 'resumen', conf = modo === 'confirmaciones', vice = modo === 'vice';
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
@@ -764,9 +766,8 @@ function construirPDF(r, modo){
   const total = r.total, d = new Date();
   const fecha = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`, hora = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const TITULO = latin(CONFIG.EVENTO);
-  const soloConf = conf && CONFIG.PDF_CONF_SOLO_CONFIRMADOS;
   const SUB = asis ? 'Lista de participantes asistentes' : resu ? 'Resumen de invitaciones y confirmaciones'
-            : soloConf ? 'Lista de participantes confirmados' : 'Avance de confirmaciones';
+            : vice ? 'Lista de participantes confirmados' : 'Avance de confirmaciones';
   const pie = `${TITULO} - ${SUB} - corte al ${fecha} ${hora}`;
   const pc = x => (total ? Math.round(x * 100 / total) : 0) + ' %';
 
@@ -931,10 +932,13 @@ function construirPDF(r, modo){
   const entidadDe = p => (conTipo && p.entidadSola !== undefined) ? (p.entidadSola || '-') : p.entidad;
   const cNum = {h:'N°', v:(p, i) => i + 1, w:12, al:'center'};
   const cTipo = {h:'Tipo de actor', v:p => latin(p.tipo) || '-', w:34};
-  const cNom = {h:'Nombres y apellidos', v:p => latin(p.nombre), w: conTipo ? 58 : 68};
+  const cNom = {h:'Nombres y apellidos', v:p => latin(p.nombre), w: vice ? 66 : conTipo ? 58 : 68};
   const cEnt = {h:'Entidad', v:p => latin(entidadDe(p))};
+  // En el reporte general y en el del vice se muestra Ciudad / país (columna F) en lugar de Entidad.
+  const usaCiudad = (conf || vice) && r.lista.length > 0 && 'ciudad' in r.lista[0];
+  const cCiu = {h:'Ciudad / país', v:p => latin(p.ciudad) || '-'};
   const cCar = {h:'Cargo', v:p => latin(p.cargo)};
-  const defs = [cNum]; if (conTipo) defs.push(cTipo); defs.push(cNom, cEnt, cCar);
+  const defs = [cNum]; if (conTipo) defs.push(cTipo); defs.push(cNom, usaCiudad ? cCiu : cEnt, cCar);
 
   let lista, vacio, nombreArchivo;
   if (asis){
@@ -949,13 +953,17 @@ function construirPDF(r, modo){
     if (CONFIG.PDF_CONFIRMACION && r.lista.some(p => p.confirmacion)) defs.push({h:'Confirmación', v:p => latin(p.confirmacion), w:28});
     if (CONFIG.PDF_HORA) defs.push({h:'Hora', v:p => String(p.hora || '').length >= 16 ? p.hora.slice(11, 16) : '', w:16, al:'center'});
     vacio = 'Aún no hay asistentes registrados.'; nombreArchivo = 'Asistentes';
+  } else if (vice){
+    // ----- Reporte vice: solo los confirmados, sin indicadores, en lista larga -----
+    lista = r.lista.filter(p => estadoConfirmacion(p) === 'conf');
+    vacio = 'Aún no hay invitados confirmados.'; nombreArchivo = 'Reporte-vice';
   } else {
-    // ----- Confirmaciones (antes del evento): sale de la columna "Estado de confirmación" -----
+    // ----- Reporte general (antes del evento): todos los invitados con su estado de confirmación -----
     dibujarAvanceConfirmaciones();
-    lista = soloConf ? r.lista.filter(p => estadoConfirmacion(p) === 'conf') : r.lista;
+    lista = r.lista;
     const texto = p => { const e = estadoConfirmacion(p); return e === 'conf' ? 'Confirmó' : e === 'proc' ? 'En proceso' : e === 'no' ? 'No asistirá' : e === 'sin' ? 'Sin estado' : latin(p.confirmacion); };
     defs.push({h:'Confirmación', v:texto, w:30, bold:true, conf:true});
-    vacio = 'No hay personas con ese estado.'; nombreArchivo = soloConf ? 'Confirmados' : 'Confirmaciones';
+    vacio = 'No hay personas con ese estado.'; nombreArchivo = 'Reporte-general';
   }
 
   const filas = lista.length ? lista.map((p, i) => defs.map(c => c.v(p, i)))
@@ -966,7 +974,7 @@ function construirPDF(r, modo){
 
   doc.autoTable(Object.assign({}, baseTabla, {
     head: [defs.map(c => c.h)], body: filas,
-    startY: dim.y0,
+    startY: vice ? 40 : dim.y0,
     styles: estiloBase(conTipo ? 9 : 9.5, 2.4),
     columnStyles: estilosCol,
     didParseCell: data => {
