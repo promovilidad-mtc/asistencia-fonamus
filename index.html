@@ -115,7 +115,22 @@ label.campo{display:block;font-weight:600;margin-bottom:8px}
 details.agregar{margin-top:20px;background:var(--papel);border:1px solid var(--borde);border-radius:10px;padding:0 16px}
 details.agregar summary{cursor:pointer;font-weight:600;padding:14px 0}
 details.agregar form{padding:0 0 16px;display:grid;gap:10px}
-details.agregar input[type=text]{height:48px;border:2px solid #9fb0bc;border-radius:8px;padding:0 12px;font-size:17px;width:100%}
+details.agregar input:not([type=checkbox]){height:48px;border:2px solid #9fb0bc;border-radius:8px;padding:0 12px;font-size:17px;width:100%;background:var(--papel)}
+details.agregar .dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item__txt .origen,.origen{display:inline-block;font-size:12px;font-weight:600;color:#4a3b00;background:#fff0cc;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+
+/* QR de registro (pantalla para mostrar e imprimir) */
+.qr-hoja{background:var(--papel);border:1px solid var(--borde);border-top:8px solid var(--asfalto);border-radius:12px;padding:26px 22px 22px;text-align:center;margin-top:12px}
+.qr-evento{margin:0;font:700 26px/1.1 var(--titulo);color:var(--suave);letter-spacing:.02em}
+.qr-titulo{margin:4px 0 12px;font:700 clamp(40px,10vw,64px)/1 var(--titulo)}
+.qr-pasos{margin:0 auto 16px;max-width:460px;text-align:left;font-size:18px;padding-left:24px}
+.qr-pasos li{margin:2px 0}
+.qr-img{width:min(340px,80vw);margin:0 auto}
+.qr-img svg{display:block;width:100%;height:auto}
+.qr-url{margin:12px 0 0;font-size:13px;color:var(--suave);overflow-wrap:anywhere}
+.qr-estado{border-radius:10px;padding:12px 14px;margin:14px 0 0;font-size:16px}
+.qr-estado.abierto{background:var(--ok-fondo);color:#064f3a}
+.qr-estado.cerrado{background:#fff4cc;color:#4a3b00}
 .chk{display:flex;gap:10px;align-items:center;font-size:16px}
 .chk input{width:22px;height:22px}
 
@@ -168,9 +183,12 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
 .tabla-lista table.dato th{position:sticky;top:0;z-index:1}
 .solo-impresion{display:none}
 .vacio-t{padding:12px 4px;color:var(--suave)}
-@media (max-width:900px){ #navSeg{display:none} #segContenido{display:none} .solo-pc{display:block} }
+/* Solo en pantalla: al imprimir, el ancho de la hoja (A4 vertical ≈ 720 px) no debe activar el aviso de "pensada para computador" */
+@media screen and (max-width:900px){ #navSeg{display:none} #segContenido{display:none} .solo-pc{display:block} }
 @media print{
   @page{size:A4 landscape;margin:9mm}
+  body.seg-ancho .solo-pc{display:none!important}
+  body.seg-ancho #segContenido{display:block!important}
   body.seg-ancho{background:#fff;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body.seg-ancho .banda,body.seg-ancho .nav,body.seg-ancho .acciones,body.seg-ancho .seg-filtros,body.seg-ancho .demo,body.seg-ancho .toast,body.seg-ancho .carga,body.seg-ancho #segAviso,body.seg-ancho .tarjeta .sub{display:none!important}
   body.seg-ancho main{max-width:none;padding:0}
@@ -192,6 +210,19 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
   body.seg-ancho table.dato thead{display:table-header-group}
   body.seg-ancho tr{break-inside:avoid}
   body.seg-ancho .mb{width:70px}
+  body.seg-ancho .est{font-size:9px;padding:1px 7px}
+
+  /* QR de registro: una hoja A4 vertical, solo con el cartel */
+  @page qr{size:A4 portrait;margin:12mm}
+  body.qr-vista{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.qr-vista .banda,body.qr-vista .demo,body.qr-vista .toast,body.qr-vista .carga,body.qr-vista #vQR .panel__top,body.qr-vista #qrEstado{display:none!important}
+  body.qr-vista main{max-width:none;padding:0}
+  body.qr-vista .qr-hoja{page:qr;margin:0;border:2px solid #1d2b36;border-top-width:16px;border-radius:0;padding:14mm 12mm 10mm;break-inside:avoid}
+  body.qr-vista .qr-evento{font-size:30px}
+  body.qr-vista .qr-titulo{font-size:76px;margin:6px 0 18px}
+  body.qr-vista .qr-pasos{font-size:21px;max-width:150mm;margin-bottom:10mm}
+  body.qr-vista .qr-img{width:115mm}
+  body.qr-vista .qr-url{font-size:11px;margin-top:6mm}
 }
 
 /* Aviso al marcar */
@@ -217,6 +248,7 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
   .persona__der .principal{width:100%}
   .item{align-items:flex-start;flex-direction:column}
   .item__der{width:100%;justify-content:space-between}
+  details.agregar .dos{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){
   .via i{transition:none}
@@ -332,6 +364,7 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
         <button class="sec" id="btnPDFConf" type="button">Reporte general</button>
         <button class="sec" id="btnPDFVice" type="button">Reporte vice</button>
         <button class="sec" id="btnPDF" type="button">Reporte FONAMUS</button>
+        <button class="sec" id="btnQR" type="button">QR de registro</button>
       </div>
     </div>
     <div class="resumen">
@@ -350,14 +383,42 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
     <details class="agregar">
       <summary>Agregar a alguien que no está en la lista</summary>
       <form id="formAgregar">
-        <input type="text" id="aNombre" placeholder="Nombres y apellidos" required minlength="3" maxlength="120">
-        <input type="text" id="aEntidad" placeholder="Entidad" maxlength="160">
-        <input type="text" id="aCargo" placeholder="Cargo" maxlength="160">
+        <input type="text" id="aNombre" placeholder="Nombres y apellidos" aria-label="Nombres y apellidos" required minlength="3" maxlength="120">
+        <input type="text" id="aDni" placeholder="DNI / CE / pasaporte (opcional)" aria-label="DNI, carné de extranjería o pasaporte" maxlength="20" autocomplete="off">
+        <input type="text" id="aEntidad" placeholder="Entidad" aria-label="Entidad" maxlength="160">
+        <input type="text" id="aCargo" placeholder="Cargo" aria-label="Cargo" maxlength="160">
+        <div class="dos">
+          <input type="tel" id="aTelefono" placeholder="Teléfono / celular (opcional)" aria-label="Teléfono o celular" maxlength="30" inputmode="tel" autocomplete="off">
+          <input type="email" id="aCorreo" placeholder="Correo electrónico (opcional)" aria-label="Correo electrónico" maxlength="120" autocomplete="off">
+        </div>
         <label class="chk"><input type="checkbox" id="aPresente" checked> Marcar asistencia ahora</label>
         <button class="principal" type="submit">Agregar</button>
       </form>
     </details>
     <p><button class="sec" id="btnReiniciarDemo" type="button" hidden>Reiniciar datos de ejemplo</button></p>
+  </section>
+
+  <!-- QR de registro: para imprimir y dejar en la mesa -->
+  <section id="vQR" hidden aria-labelledby="tQR">
+    <div class="panel__top">
+      <h2 id="tQR">QR de registro</h2>
+      <div class="acciones">
+        <button class="sec" id="btnQRVolver" type="button">Volver a la lista</button>
+        <button class="sec" id="btnQRImprimir" type="button">Imprimir QR</button>
+      </div>
+    </div>
+    <p class="qr-estado" id="qrEstado" hidden></p>
+    <div class="qr-hoja" id="qrHoja" hidden>
+      <p class="qr-evento" id="qrEvento"></p>
+      <h3 class="qr-titulo">Regístrate aquí</h3>
+      <ol class="qr-pasos">
+        <li>Escanea el código con la cámara de tu celular.</li>
+        <li>Llena tus datos y toca <b>Registrarme</b>.</li>
+        <li>Firma la hoja de asistencia en esta mesa.</li>
+      </ol>
+      <div class="qr-img" id="qrImg" role="img" aria-label="Código QR de registro"></div>
+      <p class="qr-url" id="qrUrl"></p>
+    </div>
   </section>
 
 </main>
@@ -388,7 +449,11 @@ const CONFIG = {
   PDF_RESUMEN_RESPONSABLES: true, // true: el PDF de resumen agrega la tabla de responsables (página 2). Es de uso interno.
   PDF_CONFIRMACION: false,      // true: el PDF agrega la columna "Estado de confirmación" (necesita la versión nueva de Code.gs).
   PDF_HORA: false,              // true: el PDF de asistentes agrega la hora de llegada de cada persona.
+  URL_REGISTRO: '',             // Dirección de registro.html. Vacío = la misma carpeta de esta página (lo normal en GitHub Pages).
 };
+// Quienes se agregaron en el evento (en recepción o por QR) no eran invitados: no cuentan en Confirmaciones
+// ni en los reportes de invitados (PDF de avance, Reporte general, Reporte vice). Sí cuentan en la asistencia.
+const esInvitado = p => !String(p.origen || '').trim() && !/^E\d+$/.test(p.id);
 
 /* ===================== UTILIDADES ===================== */
 const $ = s => document.querySelector(s);
@@ -420,7 +485,7 @@ const DEMO = [
 ];
 let demoDB = null;
 let DEMO_LATENCIA = 250;
-function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion,tipo]) => ({id,nombre,entidad,entidadSola:entidad,cargo,presente:!!hora,hora,confirmacion,tipo})); }
+function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion,tipo]) => ({id,nombre,entidad,entidadSola:entidad,cargo,presente:!!hora,hora,confirmacion,tipo,dni:id === 'P001' ? '01234567' : ''})); }
 async function demoApi(action, d, pin){
   if (!demoDB) demoInit();
   await sleep(DEMO_LATENCIA);
@@ -429,7 +494,7 @@ async function demoApi(action, d, pin){
     case 'buscar': {
       if (norm(d.q).length < 3) return {ok:true, resultados:[]};
       const toks = norm(d.q).split(' ').filter(Boolean);
-      return {ok:true, resultados: demoDB.filter(p => toks.every(t => norm(p.nombre).includes(t))).slice(0,8).map(p => ({...p}))};
+      return {ok:true, resultados: demoDB.filter(p => toks.every(t => norm(p.nombre).includes(t))).slice(0,8).map(({dni, ...p}) => ({...p}))};
     }
     case 'marcar': {
       const p = demoDB.find(x => x.id === d.id); if (!p) return {ok:false, error:'no_existe'};
@@ -438,13 +503,21 @@ async function demoApi(action, d, pin){
       p.presente = pres; p.hora = pres ? ahora() : '';
       return {ok:true, yaRegistrado:false, nombre:p.nombre, hora:p.hora};
     }
-    case 'panel':
-      return {ok:true, total:demoDB.length, presentes:demoDB.filter(p => p.presente).length, lista:demoDB.map(p => ({...p}))};
+    case 'panel':   // igual que el script real: nunca devuelve el DNI
+      return {ok:true, total:demoDB.length, presentes:demoDB.filter(p => p.presente).length, lista:demoDB.map(({dni, ...p}) => ({origen:'', ...p}))};
     case 'agregar': {
+      const dni = String(d.dni || '').replace(/[\s.\-]/g, '').toUpperCase();
+      if (dni && !/^[A-Z0-9]{6,15}$/.test(dni)) return {ok:false, error:'datos', campo:'dni'};
+      if (d.telefono && !/^\+?[0-9 ()\-]{6,25}$/.test(d.telefono)) return {ok:false, error:'datos', campo:'telefono'};
+      if (d.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.correo)) return {ok:false, error:'datos', campo:'correo'};
+      const ya = dni && demoDB.find(p => p.dni && p.dni.replace(/^0+/, '') === dni.replace(/^0+/, ''));
+      if (ya) return {ok:false, error:'dni_existe', id:ya.id, nombre:ya.nombre, presente:ya.presente};
       const n = demoDB.filter(p => p.id.startsWith('E')).length + 1;
-      demoDB.push({id:'E'+String(n).padStart(3,'0'), nombre:d.nombre, entidad:d.entidad||'', cargo:d.cargo||'', presente:!!d.presente, hora:d.presente ? ahora() : ''});
+      demoDB.push({id:'E'+String(n).padStart(3,'0'), nombre:d.nombre, entidad:d.entidad||'', cargo:d.cargo||'', dni, presente:!!d.presente, hora:d.presente ? ahora() : '', origen:'Recepción'});
       return {ok:true};
     }
+    case 'qr':
+      return {ok:true, codigo:'DEMO', abierto:true};
   }
   return {ok:false, error:'accion'};
 }
@@ -477,11 +550,12 @@ function pinInvalido(r){
 }
 
 /* ===================== VISTAS ===================== */
-const VISTAS = ['vPin','vBuscar','vLista','vSeg'];
+const VISTAS = ['vPin','vBuscar','vLista','vSeg','vQR'];
 function mostrar(id){
   VISTAS.forEach(v => { $('#'+v).hidden = (v !== id); });
   $('#nav').hidden = !PIN;
   document.body.classList.toggle('seg-ancho', id === 'vSeg');
+  document.body.classList.toggle('qr-vista', id === 'vQR');
   [['#navBuscar','vBuscar'],['#navLista','vLista'],['#navSeg','vSeg']].forEach(([s, v]) => {
     if (id === v) $(s).setAttribute('aria-current', 'page'); else $(s).removeAttribute('aria-current');
   });
@@ -547,7 +621,7 @@ const CAT_CARGO = c => { const t = norm(c); return t.includes('subgerente') ? 'S
 
 function pintarSeg(){
   if ($('#vSeg').hidden) return;
-  const L = listaPanel;
+  const L = listaPanel.filter(esInvitado);     // solo invitados: los agregados en el evento no cuentan aquí
   const ok = !L.length || 'confirmacion' in L[0];
   $('#segAviso').hidden = ok;
   if (!ok) $('#segAviso').textContent = 'Falta actualizar el script (Code.gs) para ver los estados de confirmación.';
@@ -819,7 +893,7 @@ function pintarFilas(){
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   $('#listaPanel').innerHTML = filas.length ? filas.map(p => `
     <div class="item">
-      <div class="item__txt"><strong>${esc(p.nombre)}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span></div>
+      <div class="item__txt"><strong>${esc(p.nombre)}${p.origen ? `<span class="origen">${esc(norm(p.origen) === 'qr' ? 'Registro QR' : 'Agregado en ' + p.origen.toLowerCase())}</span>` : ''}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span></div>
       <div class="item__der">
         ${p.presente ? `<span class="hora">${esc(fmtHora(p.hora))}</span><button class="mini peligro" type="button" data-accion="deshacer" data-id="${esc(p.id)}">Deshacer</button>`
                      : `<button class="mini ok" type="button" data-accion="marcar" data-id="${esc(p.id)}">Marcar asistencia</button>`}
@@ -850,12 +924,24 @@ $('#listaPanel').addEventListener('click', async e => {
 $('#btnActualizar').addEventListener('click', recargar);
 $('#formAgregar').addEventListener('submit', async e => {
   e.preventDefault();
-  const datos = {nombre: $('#aNombre').value.trim(), entidad: $('#aEntidad').value.trim(), cargo: $('#aCargo').value.trim(), presente: $('#aPresente').checked};
+  const v = s => $(s).value.trim();
+  const datos = {nombre: v('#aNombre'), dni: v('#aDni'), entidad: v('#aEntidad'), cargo: v('#aCargo'), telefono: v('#aTelefono'), correo: v('#aCorreo'), presente: $('#aPresente').checked};
   const out = await accion(() => api('agregar', datos));
   if (!out) return;
   const {r, l} = out;
   if (pinInvalido(r)) return;
-  if (!r.ok){ aviso(r.error === 'nombre' ? 'Escribe el nombre completo (mínimo 3 letras).' : mensajeError(r), null, true); return; }
+  if (!r.ok){
+    const CAMPOS = {dni:['#aDni', 'El DNI no es válido: usa solo números o letras (6 a 15).'], telefono:['#aTelefono', 'El teléfono no es válido: usa solo números, espacios y +.'], correo:['#aCorreo', 'El correo no es válido. Revisa que tenga @ y el dominio.']};
+    if (r.error === 'datos' && CAMPOS[r.campo]){ aviso(CAMPOS[r.campo][1], null, true); $(CAMPOS[r.campo][0]).focus(); return; }
+    if (r.error === 'dni_existe'){
+      // Ya está en la lista: no se duplica. Se busca a la persona para marcarla desde ahí.
+      aviso(`Ese DNI ya está en la lista: ${r.nombre}${r.presente ? ' (ya tiene asistencia)' : ''}. Te lo muestro arriba para marcarlo.`, null, true);
+      $('#qPanel').value = r.nombre || ''; filtro = 'todos';
+      document.querySelectorAll('.filtros button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === 'todos')));
+      pintarFilas(); $('#qPanel').scrollIntoView({block:'center'}); return;
+    }
+    aviso(r.error === 'nombre' ? 'Escribe el nombre completo (mínimo 3 letras).' : r.error === 'accion' ? 'Falta actualizar el script (Code.gs).' : mensajeError(r), null, true); return;
+  }
   e.target.reset(); $('#aPresente').checked = true; e.target.closest('details').open = false;
   aviso('Persona agregada a la lista');
   if (l && l.ok) pintarLista(l);
@@ -920,6 +1006,8 @@ $('#btnPDFRes').addEventListener('click', () => pdfDesde('resumen'));
 
 function construirPDF(r, modo){
   const asis = modo === 'asistentes', resu = modo === 'resumen', conf = modo === 'confirmaciones', vice = modo === 'vice';
+  // Los reportes de invitados solo cuentan invitados; el Reporte FONAMUS (asistencia) cuenta a todos.
+  if (!asis){ const inv = r.lista.filter(esInvitado); r = Object.assign({}, r, {lista: inv, total: inv.length}); }
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
@@ -1149,6 +1237,51 @@ function construirPDF(r, modo){
   doc.putTotalPages('{total_pages_count_string}');
   doc.save(nombreSeguro(nombreArchivo));
 }
+
+/* ===================== QR DE REGISTRO ===================== */
+// El QR lleva la dirección de registro.html con el código secreto (CODIGO_QR del script). No cambia mientras
+// no cambie la dirección de la página ni el código.
+const LIB_QR = {url:'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js', sri:'sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1'};
+function urlRegistro(codigo){
+  const u = new URL(CONFIG.URL_REGISTRO || 'registro.html', location.href);
+  u.search = ''; u.hash = '';
+  u.searchParams.set('c', codigo);
+  return u.href;
+}
+async function abrirQR(){
+  const out = await conCarga(async () => {
+    if (!window.qrcode){ try { await cargarScript(LIB_QR); } catch (e) { return {ok:false, error:'lib'}; } }
+    return api('qr');
+  });
+  if (!out) return;
+  if (pinInvalido(out)) return;
+  if (!out.ok){
+    aviso(out.error === 'lib' ? 'No se pudo preparar el QR. Revisa el internet e inténtalo de nuevo.'
+        : out.error === 'accion' ? 'Falta actualizar el script (Code.gs) para el registro por QR.' : mensajeError(out), null, true);
+    return;
+  }
+  mostrar('vQR');
+  const est = $('#qrEstado');
+  est.hidden = false;
+  if (!out.codigo){
+    est.className = 'qr-estado cerrado';
+    est.textContent = 'Falta el código del QR: en Apps Script agrega la propiedad CODIGO_QR (ver LEEME, sección 6).';
+    $('#qrHoja').hidden = true; return;
+  }
+  const url = urlRegistro(out.codigo);
+  const qr = qrcode(0, 'Q'); qr.addData(url); qr.make();          // nivel Q: se lee aunque el papel se manche o arrugue
+  $('#qrImg').innerHTML = qr.createSvgTag({cellSize:10, margin:40, scalable:true});
+  $('#qrUrl').textContent = url;
+  $('#qrEvento').textContent = CONFIG.EVENTO;
+  $('#qrHoja').hidden = false;
+  est.className = 'qr-estado ' + (out.abierto ? 'abierto' : 'cerrado');
+  est.textContent = out.abierto
+    ? 'El registro por QR está ABIERTO: quien escanee podrá registrarse.'
+    : 'El registro por QR está CERRADO: quien escanee verá un aviso. Para abrirlo, en Apps Script cambia la propiedad REGISTRO_QR a «abierto». El QR impreso sigue sirviendo.';
+}
+$('#btnQR').addEventListener('click', abrirQR);
+$('#btnQRVolver').addEventListener('click', () => { mostrar('vLista'); recargar(); });
+$('#btnQRImprimir').addEventListener('click', () => window.print());
 
 $('#btnReiniciarDemo').addEventListener('click', () => { demoInit(); recargar(); });
 
