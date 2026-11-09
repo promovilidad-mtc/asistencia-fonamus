@@ -60,6 +60,7 @@ form{display:grid;gap:14px}
 .caja h2{margin-bottom:10px}
 .caja p{margin:0 0 10px;font-size:19px}
 .caja .firma{background:#fff4cc;color:#4a3b00;border-radius:10px;padding:12px;font-weight:600;margin:16px 0 18px}
+.nfirma{display:block;margin:8px auto 0;width:max-content;font:700 44px/1 var(--titulo);background:var(--linea);color:var(--asfalto);border-radius:10px;padding:8px 18px}
 .cargando{color:var(--suave);text-align:center;padding:30px 0}
 </style>
 </head>
@@ -121,7 +122,7 @@ form{display:grid;gap:14px}
       <div class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <h2>¡Listo!</h2>
       <p>Tu asistencia quedó registrada<span id="listoNombre"></span>.</p>
-      <p class="firma">Ahora firma la hoja de asistencia en la mesa de registro.</p>
+      <p class="firma" id="listoFirma">Ahora firma la hoja de asistencia en la mesa de registro.</p>
       <button class="sec" id="btnOtra" type="button">Registrar a otra persona</button>
     </div>
   </section>
@@ -173,7 +174,7 @@ async function demo(action, d){
   if (codigo !== 'DEMO') return {ok:false, error:'codigo'};
   if (String(d.nombre || '').trim().split(/\s+/).length < 2) return {ok:false, error:'datos', campo:'nombre'};
   if (!/^[A-Z0-9]{6,15}$/.test(String(d.dni || '').replace(/[\s.\-]/g, '').toUpperCase())) return {ok:false, error:'datos', campo:'dni'};
-  return {ok:true};
+  return {ok:true, nFirma:251};
 }
 
 function vista(id){
@@ -251,6 +252,13 @@ $('#form').addEventListener('submit', async e => {
   btn.disabled = false; btn.textContent = 'Registrarme';
   if (r.ok){
     $('#listoNombre').textContent = d.nombre ? ', ' + d.nombre.split(' ')[0] : '';
+    // N° de la lista de firmas: así sabe en qué fila del papel firmar
+    const nf = parseInt(r.nFirma, 10);
+    const pf = $('#listoFirma'); pf.textContent = '';
+    if (nf > 0){
+      pf.append('Ahora firma la hoja de asistencia en la mesa, en el ');
+      const b = document.createElement('span'); b.className = 'nfirma'; b.textContent = 'N° ' + nf; pf.append(b);
+    } else pf.textContent = 'Ahora firma la hoja de asistencia en la mesa de registro.';
     vista('vListo'); return;
   }
   if (r.error === 'datos'){ marcarError(r.campo); return; }

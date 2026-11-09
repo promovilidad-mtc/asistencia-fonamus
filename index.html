@@ -117,6 +117,13 @@ details.agregar summary{cursor:pointer;font-weight:600;padding:14px 0}
 details.agregar form{padding:0 0 16px;display:grid;gap:10px}
 details.agregar input:not([type=checkbox]){height:48px;border:2px solid #9fb0bc;border-radius:8px;padding:0 12px;font-size:17px;width:100%;background:var(--papel)}
 details.agregar .dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* N° de la lista de firmas impresa */
+.nfirma{display:inline-block;min-width:3.4em;text-align:center;font:700 19px/1 var(--titulo);background:var(--linea);color:var(--asfalto);border-radius:6px;padding:4px 7px;margin-right:9px;vertical-align:1px;white-space:nowrap}
+.dialogo{border:0;border-radius:14px;padding:22px 22px 18px;max-width:480px;width:calc(100% - 32px);box-shadow:0 10px 40px rgba(0,0,0,.3);color:var(--tinta)}
+.dialogo::backdrop{background:rgba(22,34,44,.62)}
+.dialogo h3{font:700 26px/1.1 var(--titulo);margin:0 0 10px}
+.dialogo p{margin:0 0 18px;font-size:17px}
+.dialogo__botones{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .item__txt .origen,.origen{display:inline-block;font-size:12px;font-weight:600;color:#4a3b00;background:#fff0cc;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
 
 /* QR de registro (pantalla para mostrar e imprimir) */
@@ -364,6 +371,7 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
         <button class="sec" id="btnPDFConf" type="button">Reporte general</button>
         <button class="sec" id="btnPDFVice" type="button">Reporte vice</button>
         <button class="sec" id="btnPDF" type="button">Reporte FONAMUS</button>
+        <button class="sec" id="btnFirmas" type="button">Lista de firmas</button>
         <button class="sec" id="btnQR" type="button">QR de registro</button>
       </div>
     </div>
@@ -397,6 +405,17 @@ table.dato tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--linea)}
     </details>
     <p><button class="sec" id="btnReiniciarDemo" type="button" hidden>Reiniciar datos de ejemplo</button></p>
   </section>
+
+  <!-- Pregunta antes de numerar la lista de firmas -->
+  <dialog class="dialogo" id="dlg" aria-labelledby="dlgT">
+    <h3 id="dlgT"></h3>
+    <p id="dlgS"></p>
+    <div class="dialogo__botones">
+      <button class="sec" data-v="cancelar" type="button">Cancelar</button>
+      <button class="sec" data-v="otra" id="dlgOtra" type="button"></button>
+      <button class="principal chico" data-v="ok" id="dlgOk" type="button"></button>
+    </div>
+  </dialog>
 
   <!-- QR de registro: para imprimir y dejar en la mesa -->
   <section id="vQR" hidden aria-labelledby="tQR">
@@ -450,6 +469,7 @@ const CONFIG = {
   PDF_CONFIRMACION: false,      // true: el PDF agrega la columna "Estado de confirmación" (necesita la versión nueva de Code.gs).
   PDF_HORA: false,              // true: el PDF de asistentes agrega la hora de llegada de cada persona.
   URL_REGISTRO: '',             // Dirección de registro.html. Vacío = la misma carpeta de esta página (lo normal en GitHub Pages).
+  FIRMAS_EN_BLANCO: 30,         // Filas numeradas en blanco al final de la lista de firmas (reemplazos, QR, no confirmados).
 };
 // Quienes se agregaron en el evento (en recepción o por QR) no eran invitados: no cuentan en Confirmaciones
 // ni en los reportes de invitados (PDF de avance, Reporte general, Reporte vice). Sí cuentan en la asistencia.
@@ -484,8 +504,14 @@ const DEMO = [
   ['P012','Raúl Gutiérrez Mamani','Municipalidad Provincial de Muestra','Gerente de Movilidad','','Confirmó','Municipalidad']
 ];
 let demoDB = null;
+// Igual que el script: si ya hay lista de firmas y la persona no tiene número, le da el siguiente libre.
+function demoFirma(p){
+  const max = demoDB.reduce((a, x) => Math.max(a, x.nFirma || 0), 0);
+  if (!p.nFirma && max > 0) p.nFirma = max + 1;
+  return p.nFirma || 0;
+}
 let DEMO_LATENCIA = 250;
-function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion,tipo]) => ({id,nombre,entidad,entidadSola:entidad,cargo,presente:!!hora,hora,confirmacion,tipo,dni:id === 'P001' ? '01234567' : ''})); }
+function demoInit(){ demoDB = DEMO.map(([id,nombre,entidad,cargo,hora,confirmacion,tipo]) => ({id,nombre,entidad,entidadSola:entidad,cargo,presente:!!hora,hora,confirmacion,tipo,dni:id === 'P001' ? '01234567' : '',nFirma:0})); }
 async function demoApi(action, d, pin){
   if (!demoDB) demoInit();
   await sleep(DEMO_LATENCIA);
@@ -499,9 +525,16 @@ async function demoApi(action, d, pin){
     case 'marcar': {
       const p = demoDB.find(x => x.id === d.id); if (!p) return {ok:false, error:'no_existe'};
       const pres = !!d.presente;
-      if (pres && p.presente) return {ok:true, yaRegistrado:true, nombre:p.nombre, hora:p.hora};
+      if (pres && p.presente) return {ok:true, yaRegistrado:true, nombre:p.nombre, hora:p.hora, nFirma:demoFirma(p)};
       p.presente = pres; p.hora = pres ? ahora() : '';
-      return {ok:true, yaRegistrado:false, nombre:p.nombre, hora:p.hora};
+      return {ok:true, yaRegistrado:false, nombre:p.nombre, hora:p.hora, nFirma: pres ? demoFirma(p) : p.nFirma};
+    }
+    case 'firmas': {
+      const ya = demoDB.filter(p => p.nFirma > 0).length;
+      if (ya && !d.renumerar) return {ok:true, numerados:ya, nuevo:false};
+      let k = 0;
+      demoDB.forEach(p => { p.nFirma = (esInvitado(p) && estadoConfirmacion(p) === 'conf') ? ++k : 0; });
+      return {ok:true, numerados:k, nuevo:true};
     }
     case 'panel':   // igual que el script real: nunca devuelve el DNI
       return {ok:true, total:demoDB.length, presentes:demoDB.filter(p => p.presente).length, lista:demoDB.map(({dni, ...p}) => ({origen:'', ...p}))};
@@ -513,8 +546,9 @@ async function demoApi(action, d, pin){
       const ya = dni && demoDB.find(p => p.dni && p.dni.replace(/^0+/, '') === dni.replace(/^0+/, ''));
       if (ya) return {ok:false, error:'dni_existe', id:ya.id, nombre:ya.nombre, presente:ya.presente};
       const n = demoDB.filter(p => p.id.startsWith('E')).length + 1;
-      demoDB.push({id:'E'+String(n).padStart(3,'0'), nombre:d.nombre, entidad:d.entidad||'', cargo:d.cargo||'', dni, presente:!!d.presente, hora:d.presente ? ahora() : '', origen:'Recepción'});
-      return {ok:true};
+      const nueva = {id:'E'+String(n).padStart(3,'0'), nombre:d.nombre, entidad:d.entidad||'', cargo:d.cargo||'', dni, presente:!!d.presente, hora:d.presente ? ahora() : '', origen:'Recepción', nFirma:0};
+      demoDB.push(nueva);
+      return {ok:true, nFirma: d.presente ? demoFirma(nueva) : 0};
     }
     case 'qr':
       return {ok:true, codigo:'DEMO', abierto:true};
@@ -818,7 +852,7 @@ async function buscar(){
   }
   caja.innerHTML = ultimos.map(p => `
     <div class="persona">
-      <div class="persona__txt"><strong>${esc(p.nombre)}</strong><span>${esc(p.entidad)}</span><span>${esc(p.cargo)}</span></div>
+      <div class="persona__txt"><strong>${badgeFirma(p.nFirma)}${esc(p.nombre)}</strong><span>${esc(p.entidad)}</span><span>${esc(p.cargo)}</span></div>
       <div class="persona__der">
         ${p.presente
           ? `<span class="etiqueta">Asistió ${esc(fmtHora(p.hora))}</span><button class="mini peligro" type="button" data-accion="deshacer" data-id="${esc(p.id)}">Deshacer</button>`
@@ -826,6 +860,10 @@ async function buscar(){
       </div>
     </div>`).join('');
 }
+
+// N° de la lista de firmas impresa (si ya se generó)
+const badgeFirma = n => n ? `<span class="nfirma" title="Número en la lista de firmas">N° ${esc(n)}</span>` : '';
+const textoFirma = n => n ? ` · firma en el N° ${n}` : '';
 
 async function marcar(id, presente){
   return api('marcar', {id, presente});
@@ -855,8 +893,8 @@ $('#resultados').addEventListener('click', async e => {
   if (!r.ok){ b.disabled = false; b.textContent = 'Marcar asistencia'; aviso(mensajeError(r), null, true); return; }
   // Listo para la siguiente persona
   $('#q').value = ''; $('#resultados').innerHTML = ''; ultimos = []; ayuda(AYUDA);
-  aviso(r.yaRegistrado ? `${r.nombre} ya estaba marcada a las ${fmtHora(r.hora)}`
-                       : `Asistencia marcada: ${r.nombre} (${fmtHora(r.hora)})`,
+  aviso(r.yaRegistrado ? `${r.nombre} ya estaba marcada a las ${fmtHora(r.hora)}${textoFirma(r.nFirma)}`
+                       : `Asistencia marcada: ${r.nombre} (${fmtHora(r.hora)})${textoFirma(r.nFirma)}`,
         r.yaRegistrado ? null : () => deshacerAsistencia(id, r.nombre));
   $('#q').focus();
 });
@@ -889,11 +927,11 @@ function pintarFilas(){
   const toks = norm($('#qPanel').value).split(' ').filter(Boolean);
   const filas = listaPanel
     .filter(p => filtro === 'todos' || (filtro === 'presentes' ? p.presente : !p.presente))
-    .filter(p => toks.every(t => norm(p.nombre + ' ' + p.entidad).includes(t)))
+    .filter(p => toks.every(t => /^\d+$/.test(t) ? String(p.nFirma || '') === t : norm(p.nombre + ' ' + p.entidad).includes(t)))   // un número busca por N° de firma
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   $('#listaPanel').innerHTML = filas.length ? filas.map(p => `
     <div class="item">
-      <div class="item__txt"><strong>${esc(p.nombre)}${p.origen ? `<span class="origen">${esc(norm(p.origen) === 'qr' ? 'Registro QR' : 'Agregado en ' + p.origen.toLowerCase())}</span>` : ''}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span></div>
+      <div class="item__txt"><strong>${badgeFirma(p.nFirma)}${esc(p.nombre)}${p.origen ? `<span class="origen">${esc(norm(p.origen) === 'qr' ? 'Registro QR' : 'Agregado en ' + p.origen.toLowerCase())}</span>` : ''}</strong><span>${esc(p.entidad)}${p.entidad && p.cargo ? ' – ' : ''}${esc(p.cargo)}</span></div>
       <div class="item__der">
         ${p.presente ? `<span class="hora">${esc(fmtHora(p.hora))}</span><button class="mini peligro" type="button" data-accion="deshacer" data-id="${esc(p.id)}">Deshacer</button>`
                      : `<button class="mini ok" type="button" data-accion="marcar" data-id="${esc(p.id)}">Marcar asistencia</button>`}
@@ -917,7 +955,7 @@ $('#listaPanel').addEventListener('click', async e => {
   const {r, l} = out;
   if (pinInvalido(r)) return;
   if (!r.ok){ b.disabled = false; aviso(mensajeError(r), null, true); return; }
-  if (marca) aviso(`Asistencia marcada: ${p ? p.nombre : ''}`, () => deshacerAsistencia(id, p ? p.nombre : ''));
+  if (marca) aviso(`Asistencia marcada: ${p ? p.nombre : ''}${textoFirma(r.nFirma)}`, () => deshacerAsistencia(id, p ? p.nombre : ''));
   else aviso('Se deshizo la asistencia de ' + (p ? p.nombre : ''));
   if (l && l.ok) pintarLista(l);
 });
@@ -943,7 +981,7 @@ $('#formAgregar').addEventListener('submit', async e => {
     aviso(r.error === 'nombre' ? 'Escribe el nombre completo (mínimo 3 letras).' : r.error === 'accion' ? 'Falta actualizar el script (Code.gs).' : mensajeError(r), null, true); return;
   }
   e.target.reset(); $('#aPresente').checked = true; e.target.closest('details').open = false;
-  aviso('Persona agregada a la lista');
+  aviso('Persona agregada a la lista' + textoFirma(r.nFirma));
   if (l && l.ok) pintarLista(l);
 });
 /* ===================== PDF: ASISTENTES Y CONFIRMACIONES ===================== */
@@ -1004,10 +1042,72 @@ $('#btnPDFConf').addEventListener('click', () => pdfDesde('confirmaciones'));
 $('#btnPDFVice').addEventListener('click', () => pdfDesde('vice'));
 $('#btnPDFRes').addEventListener('click', () => pdfDesde('resumen'));
 
+/* ===================== LISTA DE FIRMAS ===================== */
+// Ventana con botones. Devuelve 'ok', 'otra' o 'cancelar' (también con la tecla Esc).
+let resolverDlg = null;
+function preguntar(titulo, texto, ok, otra){
+  return new Promise(res => {
+    resolverDlg = res;
+    $('#dlgT').textContent = titulo; $('#dlgS').textContent = texto;
+    $('#dlgOk').textContent = ok;
+    $('#dlgOtra').textContent = otra || ''; $('#dlgOtra').hidden = !otra;
+    $('#dlg').showModal(); $('#dlgOk').focus();
+  });
+}
+function cerrarDlg(v){
+  const f = resolverDlg; resolverDlg = null;
+  if ($('#dlg').open) $('#dlg').close();
+  if (f) f(v);
+}
+document.querySelectorAll('#dlg [data-v]').forEach(b => b.addEventListener('click', () => cerrarDlg(b.dataset.v)));
+$('#dlg').addEventListener('cancel', e => { e.preventDefault(); cerrarDlg('cancelar'); });
+async function listaFirmas(){
+  const out = await conCarga(async () => {
+    if (!(await asegurarPDF())) return {ok:false, error:'pdf'};
+    return api('panel');
+  });
+  if (!out) return;
+  if (out.error === 'pdf'){ aviso('No se pudo preparar el PDF. Revisa el internet e inténtalo de nuevo.', null, true); return; }
+  if (pinInvalido(out)) return;
+  if (!out.ok){ aviso(mensajeError(out), null, true); return; }
+  pintarLista(out);
+  if (out.lista.length && !('nFirma' in out.lista[0])){ aviso('Falta actualizar el script (Code.gs) para la lista de firmas.', null, true); return; }
+
+  const numerados = out.lista.filter(p => p.nFirma > 0).length;
+  const confirmados = out.lista.filter(p => esInvitado(p) && estadoConfirmacion(p) === 'conf').length;
+  let renumerar = false;
+  if (numerados){
+    const op = await preguntar('Ya hay una lista de firmas',
+      `Hay ${numerados} personas con su N° de firma guardado. Si ya imprimieron la lista, usa la misma numeración. Vuelve a numerar solo si todavía NO la imprimieron: los números cambiarán.`,
+      'Usar la misma numeración', 'Volver a numerar');
+    if (op === 'cancelar') return;
+    renumerar = op === 'otra';
+  } else {
+    const op = await preguntar('Generar la lista de firmas',
+      `Se numerará a los ${confirmados} invitados confirmados, en el orden del Sheet, y cada número quedará guardado en la columna «N° firma». Así la app mostrará el mismo número que el papel. Al final van ${CONFIG.FIRMAS_EN_BLANCO} filas en blanco para quienes no estaban en la lista.`,
+      'Numerar y generar PDF');
+    if (op !== 'ok') return;
+  }
+  let datos = out;
+  if (renumerar || !numerados){
+    const r2 = await conCarga(async () => {
+      const f = await api('firmas', {renumerar});
+      return f.ok ? api('panel') : f;
+    });
+    if (!r2) return;
+    if (pinInvalido(r2)) return;
+    if (!r2.ok){ aviso(r2.error === 'accion' ? 'Falta actualizar el script (Code.gs) para la lista de firmas.' : mensajeError(r2), null, true); return; }
+    datos = r2; pintarLista(r2);
+  }
+  try { construirPDF(datos, 'firmas'); aviso('Lista de firmas generada. Revisa tus descargas.'); }
+  catch (e) { console.error(e); aviso('No se pudo crear el PDF. Inténtalo de nuevo.', null, true); }
+}
+$('#btnFirmas').addEventListener('click', listaFirmas);
+
 function construirPDF(r, modo){
-  const asis = modo === 'asistentes', resu = modo === 'resumen', conf = modo === 'confirmaciones', vice = modo === 'vice';
-  // Los reportes de invitados solo cuentan invitados; el Reporte FONAMUS (asistencia) cuenta a todos.
-  if (!asis){ const inv = r.lista.filter(esInvitado); r = Object.assign({}, r, {lista: inv, total: inv.length}); }
+  const asis = modo === 'asistentes', resu = modo === 'resumen', conf = modo === 'confirmaciones', vice = modo === 'vice', firmas = modo === 'firmas';
+  // Los reportes de invitados solo cuentan invitados; el Reporte FONAMUS (asistencia) y la lista de firmas cuentan a todos.
+  if (!asis && !firmas){ const inv = r.lista.filter(esInvitado); r = Object.assign({}, r, {lista: inv, total: inv.length}); }
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
@@ -1017,7 +1117,7 @@ function construirPDF(r, modo){
   const fecha = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`, hora = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const TITULO = latin(CONFIG.EVENTO);
   const SUB = asis ? 'Lista de participantes asistentes' : resu ? 'Resumen de invitaciones y confirmaciones'
-            : vice ? 'Lista de participantes confirmados' : 'Avance de confirmaciones';
+            : vice ? 'Lista de participantes confirmados' : firmas ? 'Lista de firmas de asistencia' : 'Avance de confirmaciones';
   const pie = `${TITULO} - ${SUB} - corte al ${fecha} ${hora}`;
   const pc = x => (total ? Math.round(x * 100 / total) : 0) + ' %';
 
@@ -1182,10 +1282,10 @@ function construirPDF(r, modo){
   const entidadDe = p => (conTipo && p.entidadSola !== undefined) ? (p.entidadSola || '-') : p.entidad;
   const cNum = {h:'N°', v:(p, i) => i + 1, w:12, al:'center'};
   const cTipo = {h:'Tipo de actor', v:p => latin(p.tipo) || '-', w:34};
-  const cNom = {h:'Nombres y apellidos', v:p => latin(p.nombre), w: vice ? 66 : conTipo ? 58 : 68};
+  const cNom = {h:'Nombres y apellidos', v:p => latin(p.nombre), w: firmas ? 64 : vice ? 66 : conTipo ? 58 : 68};
   const cEnt = {h:'Entidad', v:p => latin(entidadDe(p))};
-  // En el reporte general y en el del vice se muestra Ciudad / país (columna F) en lugar de Entidad.
-  const usaCiudad = (conf || vice) && r.lista.length > 0 && 'ciudad' in r.lista[0];
+  // En el reporte general, en el del vice y en la lista de firmas se muestra Ciudad / país (columna F) en lugar de Entidad.
+  const usaCiudad = (conf || vice || firmas) && r.lista.length > 0 && 'ciudad' in r.lista[0];
   const cCiu = {h:'Ciudad / país', v:p => latin(p.ciudad) || '-'};
   const cCar = {h:'Cargo', v:p => latin(p.cargo)};
   const defs = [cNum]; if (conTipo) defs.push(cTipo); defs.push(cNom, usaCiudad ? cCiu : cEnt, cCar);
@@ -1207,6 +1307,19 @@ function construirPDF(r, modo){
     // ----- Reporte vice: solo los confirmados, sin indicadores, en lista larga -----
     lista = r.lista.filter(p => estadoConfirmacion(p) === 'conf');
     vacio = 'Aún no hay invitados confirmados.'; nombreArchivo = 'Reporte-vice';
+  } else if (firmas){
+    // ----- Lista de firmas: como el Reporte vice, pero con el N° guardado (N° firma), columna Firma
+    //       y filas numeradas en blanco al final para quienes no estaban en la lista -----
+    const numerados = r.lista.filter(p => p.nFirma > 0).sort((a, b) => a.nFirma - b.nFirma);
+    const max = numerados.length ? numerados[numerados.length - 1].nFirma : 0;
+    const extra = Math.max(0, Number(CONFIG.FIRMAS_EN_BLANCO) || 0);
+    lista = numerados.concat(Array.from({length: extra}, (_, i) => ({nFirma: max + 1 + i, blanco: true})));
+    defs[0] = {h:'N°', v:p => p.nFirma, w:12, al:'center'};
+    defs.push({h:'Firma', v:() => '', w:58});
+    defs.forEach((c, i) => { if (i > 0){ const f = c.v; c.v = (p, j) => p.blanco ? '' : f(p, j); } });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...SUAVE);
+    doc.text(latin(`${numerados.length} personas numeradas` + (extra ? ` · filas ${max + 1} a ${max + extra} para quienes no estaban en la lista (escribir el nombre a mano)` : '')), M, 38);
+    vacio = 'Aún no hay personas numeradas.'; nombreArchivo = 'Lista-de-firmas';
   } else {
     // ----- Reporte general (antes del evento): todos los invitados con su estado de confirmación -----
     dibujarAvanceConfirmaciones();
@@ -1224,8 +1337,8 @@ function construirPDF(r, modo){
 
   doc.autoTable(Object.assign({}, baseTabla, {
     head: [defs.map(c => c.h)], body: filas,
-    startY: vice ? 40 : dim.y0,
-    styles: estiloBase(conTipo ? 9 : 9.5, 2.4),
+    startY: vice ? 40 : firmas ? 42 : dim.y0,
+    styles: Object.assign(estiloBase(conTipo ? 9 : 9.5, 2.4), firmas ? {minCellHeight: 11} : {}),   // filas altas para firmar
     columnStyles: estilosCol,
     didParseCell: data => {
       if (idxConf >= 0 && data.section === 'body' && data.column.index === idxConf && lista.length){
